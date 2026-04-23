@@ -1,0 +1,12 @@
+{
+  "files.exclude": {
+    "kistie-store": true,
+    "React": true
+  },
+  "search.exclude": {
+    "React": true
+  },
+  "sonarlint.analysisExcludesStandalone": [
+    "React/**"
+  ]
+}

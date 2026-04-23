@@ -1,1 +1,1 @@
-web: node index.js
+web: cd silverfox-ecommerce/backend && node index.js

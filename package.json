@@ -1,6 +1,18 @@
 {
-  "dependencies": {
-    "react-router-dom": "^7.14.1",
-    "sqlite3": "^5.1.7"
-  }
+  "name": "silverfox-ecommerce",
+  "version": "1.0.0",
+  "description": "SilverFox - Premium E-Commerce Platform for Distinguished Gentlemen",
+  "main": "index.js",
+  "scripts": {
+    "install-all": "cd silverfox-ecommerce/backend && npm install && cd ../React && npm install && cd ../..",
+    "start-backend": "cd silverfox-ecommerce/backend && npm start",
+    "start-frontend": "cd silverfox-ecommerce/React && npm run dev",
+    "build-frontend": "cd silverfox-ecommerce/React && npm run build",
+    "dev": "node scripts/dev.js"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  },
+  "author": "SilverFox",
+  "license": "MIT"
 }
