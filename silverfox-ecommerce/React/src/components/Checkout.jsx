@@ -1,15 +1,27 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Checkout() {
   const { cart, clearCart } = useCart();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({
     name: '', email: '', phone: '', country: '', address: '', paymentMethod: 'MTN', notes: '',
   });
   const [status, setStatus] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setForm((prev) => ({
+        ...prev,
+        name: prev.name || user.displayName || '',
+        email: prev.email || user.email || '',
+      }));
+    }
+  }, [user]);
 
   const totalsByCurrency = useMemo(() => {
     return cart.reduce((acc, item) => {
@@ -39,6 +51,7 @@ export default function Checkout() {
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ ...form, currency, items: cart, total }),
       });
       const data = await res.json();

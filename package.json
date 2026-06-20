@@ -12,6 +12,7 @@
     "start": "npm run railway:start",
     "start:local": "powershell -ExecutionPolicy Bypass -File scripts/start-local.ps1",
     "railway:build": "npm run install-all && npm run build-frontend",
+    "seed:catalog": "node silverfox-ecommerce/backend/seed-mens-catalog.js",
     "railway:start": "node silverfox-ecommerce/backend/seed-if-empty.js && node silverfox-ecommerce/backend/index.js"
   },
   "devDependencies": {

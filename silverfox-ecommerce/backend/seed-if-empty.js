@@ -16,7 +16,7 @@ db.get('SELECT COUNT(*) AS count FROM products', [], (err, row) => {
     console.log(`seed-if-empty: ${row.count} products already loaded — skipping.`);
     process.exit(0);
   }
-  console.log('seed-if-empty: empty catalog — running seed-mens-clothing.js');
-  const child = spawn(process.execPath, [path.join(__dirname, 'seed-mens-clothing.js')], { stdio: 'inherit' });
+  console.log('seed-if-empty: empty catalog — running seed-mens-catalog.js');
+  const child = spawn(process.execPath, [path.join(__dirname, 'seed-mens-catalog.js')], { stdio: 'inherit' });
   child.on('exit', (code) => process.exit(code ?? 0));
 });

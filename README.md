@@ -6,11 +6,14 @@
 
 Production **React + Express** storefront + staff admin on **Railway** / SQLite (PostgreSQL optional), with Vite dev proxy for local work.
 
+> **Platform note — SilverFox vs [Kistie Store](https://github.com/dallas8000-ops/Kistie-Store):** Kistie is **Django 5.2 + Django REST Framework + PostgreSQL** with a **Django-rendered** shop (`/shop/` SSR). SilverFox is **not Django** — it is a **React 19 SPA + Express + SQLite** stack deployed on Railway. Both share the same **boutique shop experience** (single `/shop/` page, filters, cart → checkout, staff dashboard, Kampala dispatch), but SilverFox uses a modern JavaScript full-stack instead of Python/Django.
+
 | | |
 |---|---|
 | **Live** | SilverFox on Railway — *(set your Railway URL after deploy)* |
 | **Stack** | React 19 · Vite · Express · SQLite · Bootstrap 5 |
-| **Planning** | Men's premium fashion — same boutique experience as Kistie Store, built for gentlemen |
+| **Compare** | Kistie Store = Django 5.2 · DRF · PostgreSQL · Render |
+| **Catalog** | **128 products** — 16 per men's category (8 categories); Kistie seed = 86 items |
 
 ---
 
@@ -47,7 +50,10 @@ Payments are confirmed by staff in the real world (boutique + East Africa mobile
 | About | `/about/` | Brand story |
 | Cart | `/cart/` | Line items, totals |
 | Checkout | `/checkout/` | Order capture, payment method, Kampala dispatch |
-| Contact | `/contact/` | Inquiry form → database |
+| Sign in | `/login/` | Shopper account login |
+| Sign up | `/signup/` | Create shopper account |
+| Order history | `/account/orders/` | Signed-in shopper orders |
+| Contact | `/contact/` | Inquiry form → database + SMTP |
 | Terms | `/terms/` | Terms of Service |
 | Staff dashboard | `/staff/dashboard/` | Orders, low stock, inquiries |
 | Staff inventory | `/staff/inventory/` | Product CRUD |
@@ -65,7 +71,8 @@ Payments are confirmed by staff in the real world (boutique + East Africa mobile
 | Chat (assistant) | `POST /api/chat/` | Men's fashion shopping assistant |
 | Size guide | `POST /api/size-recommend/` | Quick-view sizing |
 | Contact | `POST /api/contact/` | Store inquiries |
-| Checkout | `POST /api/checkout/` | Place order |
+| Checkout | `POST /api/checkout/` | Place order (links to account when signed in) |
+| Shopper auth | `POST /api/signup`, `POST /api/shopper/login`, `GET /api/account/me`, `GET /api/account/orders` | Accounts + order history |
 | Payments | `POST /api/payments/initiate` | Mobile money stub (MTN/Airtel/M-Pesa) |
 | Admin | `POST /api/login` | Staff session |
 
@@ -147,7 +154,8 @@ Open **http://localhost:3001/shop** — Express serves the React build + API.
 
 ```bash
 cd silverfox-ecommerce/backend
-node seed-mens-clothing.js   # Full re-seed (clears products)
+node seed-mens-catalog.js    # Full re-seed — 128 products (16 × 8 categories)
+npm run seed:catalog         # Same, from repo root
 node seed-if-empty.js        # Seed only if catalog is empty (Railway)
 ```
 

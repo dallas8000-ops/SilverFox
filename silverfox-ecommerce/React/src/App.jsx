@@ -4,10 +4,15 @@ import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } f
 import Shop from './components/Shop';
 import StaffLogin from './components/StaffLogin';
 import StaffDashboard from './components/StaffDashboard';
+import Inventory from './components/Inventory';
+import ShopperLogin from './components/ShopperLogin';
+import ShopperSignup from './components/ShopperSignup';
+import AccountOrders from './components/AccountOrders';
 import Contact from './components/Contact';
 import Terms from './components/Terms';
 import Checkout from './components/Checkout';
 import { CartProvider } from './context/CartContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import Cart from './components/Cart';
 
 function LegacyRedirect({ to = '/shop' }) {
@@ -41,29 +46,55 @@ function About() {
   );
 }
 
+function Navbar() {
+  const { user, logout } = useAuth();
+
+  const handleLogout = async (e) => {
+    e.preventDefault();
+    await logout();
+  };
+
+  return (
+    <nav className="navbar navbar-expand-lg navbar-dark sf-navbar mb-0">
+      <div className="container">
+        <Link className="navbar-brand sf-brand" to="/shop">SilverFox</Link>
+        <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-label="Toggle navigation">
+          <span className="navbar-toggler-icon"></span>
+        </button>
+        <div className="collapse navbar-collapse" id="navbarNav">
+          <ul className="navbar-nav ms-auto align-items-lg-center gap-lg-1">
+            <li className="nav-item"><Link className="nav-link sf-nav-link px-3" to="/shop">Shop</Link></li>
+            <li className="nav-item"><Link className="nav-link sf-nav-link px-3" to="/about">About</Link></li>
+            <li className="nav-item"><Link className="nav-link sf-nav-link px-3" to="/contact">Contact</Link></li>
+            <li className="nav-item"><Link className="nav-link sf-nav-link px-3" to="/cart">Cart</Link></li>
+            {user ? (
+              <>
+                <li className="nav-item"><Link className="nav-link sf-nav-link px-3" to="/account/orders">My Orders</Link></li>
+                <li className="nav-item">
+                  <button type="button" className="nav-link sf-nav-link px-3 btn btn-link border-0" onClick={handleLogout}>Sign Out</button>
+                </li>
+              </>
+            ) : (
+              <>
+                <li className="nav-item"><Link className="nav-link sf-nav-link px-3" to="/login">Sign In</Link></li>
+                <li className="nav-item"><Link className="nav-link sf-nav-link px-3" to="/signup">Sign Up</Link></li>
+              </>
+            )}
+            <li className="nav-item"><Link className="nav-link sf-nav-link px-3" to="/admin">Admin</Link></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
 function Layout({ children }) {
   return (
     <>
       <div className="sf-announcement">
         Shipped from Kampala · Worldwide delivery · Premium men's fashion
       </div>
-      <nav className="navbar navbar-expand-lg navbar-dark sf-navbar mb-0">
-        <div className="container">
-          <Link className="navbar-brand sf-brand" to="/shop">SilverFox</Link>
-          <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-label="Toggle navigation">
-            <span className="navbar-toggler-icon"></span>
-          </button>
-          <div className="collapse navbar-collapse" id="navbarNav">
-            <ul className="navbar-nav ms-auto align-items-lg-center gap-lg-1">
-              <li className="nav-item"><Link className="nav-link sf-nav-link px-3" to="/shop">Shop</Link></li>
-              <li className="nav-item"><Link className="nav-link sf-nav-link px-3" to="/about">About</Link></li>
-              <li className="nav-item"><Link className="nav-link sf-nav-link px-3" to="/contact">Contact</Link></li>
-              <li className="nav-item"><Link className="nav-link sf-nav-link px-3" to="/cart">Cart</Link></li>
-              <li className="nav-item"><Link className="nav-link sf-nav-link px-3" to="/admin">Admin</Link></li>
-            </ul>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
       <main className="flex-grow-1">{children}</main>
       <footer className="sf-footer">
         <div className="container">
@@ -86,6 +117,7 @@ function Layout({ children }) {
               <div className="d-flex flex-column gap-1">
                 <Link to="/contact">Contact</Link>
                 <Link to="/terms">Terms of Service</Link>
+                <Link to="/login">Sign In</Link>
                 <Link to="/admin">Admin</Link>
                 <a href="mailto:info@silverfox.com">info@silverfox.com</a>
               </div>
@@ -102,27 +134,32 @@ function Layout({ children }) {
 
 function App() {
   return (
-    <CartProvider>
-      <Router>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Navigate to="/shop" replace />} />
-            <Route path="/shop" element={<Shop />} />
-            <Route path="/catalog" element={<LegacyRedirect />} />
-            <Route path="/inventory" element={<LegacyRedirect />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/cart" element={<Cart />} />
-            <Route path="/checkout" element={<Checkout />} />
-            <Route path="/staff/login" element={<StaffLogin />} />
-            <Route path="/staff/dashboard" element={<StaffDashboard />} />
-            <Route path="/staff/inventory" element={<Inventory />} />
-            <Route path="/admin" element={<Navigate to="/staff/login" replace />} />
-          </Routes>
-        </Layout>
-      </Router>
-    </CartProvider>
+    <AuthProvider>
+      <CartProvider>
+        <Router>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Navigate to="/shop" replace />} />
+              <Route path="/shop" element={<Shop />} />
+              <Route path="/catalog" element={<LegacyRedirect />} />
+              <Route path="/inventory" element={<LegacyRedirect />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/cart" element={<Cart />} />
+              <Route path="/checkout" element={<Checkout />} />
+              <Route path="/login" element={<ShopperLogin />} />
+              <Route path="/signup" element={<ShopperSignup />} />
+              <Route path="/account/orders" element={<AccountOrders />} />
+              <Route path="/staff/login" element={<StaffLogin />} />
+              <Route path="/staff/dashboard" element={<StaffDashboard />} />
+              <Route path="/staff/inventory" element={<Inventory />} />
+              <Route path="/admin" element={<Navigate to="/staff/login" replace />} />
+            </Routes>
+          </Layout>
+        </Router>
+      </CartProvider>
+    </AuthProvider>
   );
 }
 

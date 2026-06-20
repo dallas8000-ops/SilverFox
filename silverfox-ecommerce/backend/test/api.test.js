@@ -99,4 +99,16 @@ describe('SilverFox API', () => {
     assert.equal(res.status, 200);
     assert.ok(res.body.success);
   });
+
+  it('POST /api/signup creates shopper account', async () => {
+    const email = `shopper-${Date.now()}@example.com`;
+    const res = await request('POST', '/api/signup', {
+      email,
+      password: 'secret1',
+      name: 'CI Shopper',
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.equal(res.body.user.email, email);
+  });
 });

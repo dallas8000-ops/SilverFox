@@ -5,8 +5,8 @@ const express = require('express');
 const session = require('express-session');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const sqlite3 = require('sqlite3').verbose();
 const path = require('node:path');
+const { db, initSchema } = require('./database');
 const multer = require('multer');
 const fs = require('node:fs');
 const bcrypt = require('bcrypt');
@@ -24,7 +24,6 @@ let fxCache = {
   source: 'fallback',
 };
 const PORT = process.env.PORT || 3001;
-const DB_PATH = process.env.DB_PATH ? path.resolve(__dirname, process.env.DB_PATH) : path.join(__dirname, 'db.sqlite');
 
 const defaultCorsOrigins = [
   'http://127.0.0.1:5500',
@@ -190,7 +189,7 @@ app.post('/api/register-admin', async (req, res) => {
   }
 });
 
-// --- Admin Logout Route ---
+// --- Logout (staff or shopper) ---
 app.post('/api/logout', (req, res) => {
   req.session.destroy(() => {
     res.clearCookie('connect.sid');
@@ -201,6 +200,151 @@ app.post('/api/logout', (req, res) => {
 // --- Admin session (for SPA inventory page) ---
 app.get('/api/admin/status', (req, res) => {
   res.json({ admin: !!req.session?.isAdmin });
+});
+
+function shopperPayload(req) {
+  if (!req.session?.userId) return null;
+  return {
+    id: req.session.userId,
+    email: req.session.userEmail,
+    displayName: req.session.displayName,
+  };
+}
+
+function mergeGuestCartIntoUser(req, userId, done) {
+  const guestKey = req.sessionID;
+  const userKey = `user:${userId}`;
+  if (!guestKey || guestKey === userKey) return done();
+  db.all('SELECT * FROM cart WHERE session = ?', [guestKey], (err, rows) => {
+    if (err || !rows?.length) return done();
+    let pending = rows.length;
+    const finish = () => {
+      pending -= 1;
+      if (pending <= 0) {
+        db.run('DELETE FROM cart WHERE session = ?', [guestKey], () => done());
+      }
+    };
+    rows.forEach((row) => {
+      db.get(
+        'SELECT id FROM cart WHERE session = ? AND product_id = ? AND size = ? AND currency = ?',
+        [userKey, row.product_id, row.size, row.currency],
+        (err2, existing) => {
+          if (existing) {
+            db.run('UPDATE cart SET quantity = quantity + ? WHERE id = ?', [row.quantity, existing.id], finish);
+          } else {
+            db.run(
+              'INSERT INTO cart (session, product_id, size, quantity, currency, price) VALUES (?, ?, ?, ?, ?, ?)',
+              [userKey, row.product_id, row.size, row.quantity, row.currency, row.price],
+              finish
+            );
+          }
+        }
+      );
+    });
+  });
+}
+
+// --- Shopper signup / login (Kistie-style accounts) ---
+app.post('/api/signup', loginRateLimit, async (req, res) => {
+  const { email, password, name } = req.body || {};
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  if (!normalizedEmail || !password) {
+    return res.status(400).json({ error: 'Email and password are required.' });
+  }
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  }
+  try {
+    const hash = await bcrypt.hash(password, 10);
+    db.run(
+      'INSERT INTO users (username, password, role, email, display_name) VALUES (?, ?, ?, ?, ?)',
+      [normalizedEmail, hash, 'shopper', normalizedEmail, name || ''],
+      function (err) {
+        if (err) {
+          if (String(err.message).includes('UNIQUE')) {
+            return res.status(409).json({ error: 'An account with this email already exists.' });
+          }
+          return res.status(500).json({ error: 'Database error' });
+        }
+        const userId = this.lastID;
+        req.session.regenerate((regenErr) => {
+          if (regenErr) return res.status(500).json({ error: 'Session error' });
+          req.session.userId = userId;
+          req.session.userEmail = normalizedEmail;
+          req.session.displayName = name || '';
+          mergeGuestCartIntoUser(req, userId, () => {
+            req.session.save((saveErr) => {
+              if (saveErr) return res.status(500).json({ error: 'Session save failed' });
+              res.json({ success: true, user: { id: userId, email: normalizedEmail, displayName: name || '' } });
+            });
+          });
+        });
+      }
+    );
+  } catch (e) {
+    console.error('Shopper signup failed:', e.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/api/shopper/login', loginRateLimit, (req, res) => {
+  const { email, password } = req.body || {};
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  if (!normalizedEmail || !password) {
+    return res.status(400).json({ error: 'Email and password are required.' });
+  }
+  db.get(
+    'SELECT * FROM users WHERE (email = ? OR username = ?) AND role = ? LIMIT 1',
+    [normalizedEmail, normalizedEmail, 'shopper'],
+    async (err, user) => {
+      if (err) return res.status(500).json({ error: 'Database error' });
+      if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+      try {
+        const match = await bcrypt.compare(password, user.password);
+        if (!match) return res.status(401).json({ error: 'Invalid credentials' });
+        req.session.regenerate((regenErr) => {
+          if (regenErr) return res.status(500).json({ error: 'Session error' });
+          req.session.userId = user.id;
+          req.session.userEmail = user.email || user.username;
+          req.session.displayName = user.display_name || '';
+          mergeGuestCartIntoUser(req, user.id, () => {
+            req.session.save((saveErr) => {
+              if (saveErr) return res.status(500).json({ error: 'Session save failed' });
+              res.json({
+                success: true,
+                user: {
+                  id: user.id,
+                  email: user.email || user.username,
+                  displayName: user.display_name || '',
+                },
+              });
+            });
+          });
+        });
+      } catch (e) {
+        console.error('Shopper login failed:', e.message);
+        res.status(500).json({ error: 'Server error' });
+      }
+    }
+  );
+});
+
+app.get('/api/account/me', (req, res) => {
+  res.json({ user: shopperPayload(req) });
+});
+
+app.get('/api/account/orders', (req, res) => {
+  if (!req.session?.userId) {
+    return res.status(401).json({ error: 'Sign in required.' });
+  }
+  db.all(
+    'SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC',
+    [req.session.userId],
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ orders: rows || [] });
+    }
+  );
 });
 
 app.get('/api/exchange-rates', async (req, res) => {
@@ -353,69 +497,7 @@ app.post('/api/products', requireAdmin, (req, res) => {
   );
 });
 
-// Initialize SQLite DB
-const db = new sqlite3.Database(DB_PATH, (err) => {
-  if (err) throw err;
-  console.log('Connected to SQLite database.');
-});
-
-// Create tables if not exist
-const initDb = () => {
-  db.run(`CREATE TABLE IF NOT EXISTS products (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    image TEXT,
-    price REAL NOT NULL,
-    stock INTEGER DEFAULT 0,
-    category TEXT,
-    description TEXT,
-    size_us TEXT,
-    size_eu TEXT
-  )`);
-  db.run(`CREATE TABLE IF NOT EXISTS cart (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session TEXT NOT NULL,
-    product_id INTEGER,
-    size TEXT,
-    quantity INTEGER,
-    currency TEXT,
-    price REAL,
-    FOREIGN KEY(product_id) REFERENCES products(id)
-  )`);
-  db.run(`CREATE TABLE IF NOT EXISTS orders (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session TEXT NOT NULL,
-    total REAL,
-    currency TEXT,
-    status TEXT DEFAULT 'pending',
-    customer_name TEXT,
-    customer_email TEXT,
-    customer_phone TEXT,
-    country TEXT,
-    address TEXT,
-    payment_method TEXT,
-    notes TEXT,
-    items_json TEXT,
-    order_reference TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
-  db.run(`CREATE TABLE IF NOT EXISTS contact_inquiries (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    email TEXT NOT NULL,
-    subject TEXT,
-    message TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
-  db.run(`CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    role TEXT NOT NULL
-  )`);
-};
-db.serialize(() => {
-  initDb();
+initSchema(db, () => {
   ensureDefaultAdmin();
 });
 
@@ -505,9 +587,9 @@ app.put('/api/products/:id', requireAdmin, (req, res) => {
 });
 
 // --- Cart Endpoints ---
-// Use a session id from query or header for demo (in production use real sessions/auth)
 function getSessionId(req) {
-  return req.query.session || req.headers['x-session-id'] || 'guest';
+  if (req.session?.userId) return `user:${req.session.userId}`;
+  return req.query.session || req.headers['x-session-id'] || req.sessionID || 'guest';
 }
 
 // Get cart items
@@ -698,10 +780,12 @@ app.post('/api/checkout', (req, res) => {
   const orderTotal = Number(total) || items.reduce((s, i) => s + (Number(i.price) || 0) * (Number(i.quantity) || 0), 0);
   const curr = String(currency || 'EUR').toUpperCase();
 
+  const userId = req.session?.userId || null;
+
   db.run(
-    `INSERT INTO orders (session, total, currency, status, customer_name, customer_email, customer_phone, country, address, payment_method, notes, items_json, order_reference)
-     VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [session, orderTotal, curr, name, email, phone, country, address, paymentMethod || 'MTN', notes || '', JSON.stringify(items), orderReference],
+    `INSERT INTO orders (session, user_id, total, currency, status, customer_name, customer_email, customer_phone, country, address, payment_method, notes, items_json, order_reference)
+     VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [session, userId, orderTotal, curr, name, email, phone, country, address, paymentMethod || 'MTN', notes || '', JSON.stringify(items), orderReference],
     function (err) {
       if (err) return res.status(500).json({ error: err.message });
       notifyNewOrder({
