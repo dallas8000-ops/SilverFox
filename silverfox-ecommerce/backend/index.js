@@ -1,6 +1,5 @@
 // --- SilverFox E-Commerce Backend ---
-// Premium Style for the Distinguished Gentleman
-// Handles: Products, Cart, Orders, Admin, Authentication
+require('dotenv').config();
 
 const express = require('express');
 const session = require('express-session');
@@ -12,6 +11,7 @@ const multer = require('multer');
 const fs = require('node:fs');
 const bcrypt = require('bcrypt');
 const { PRODUCT_IMAGES_DIR } = require('./paths');
+const { notifyContactInquiry, notifyNewOrder } = require('./email');
 
 const app = express();
 const FX_BASE = 'EUR';
@@ -131,8 +131,22 @@ function requireAdmin(req, res, next) {
   return res.status(403).json({ error: 'Admin access required' });
 }
 
+const loginAttempts = new Map();
+function loginRateLimit(req, res, next) {
+  const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+  const now = Date.now();
+  let entry = loginAttempts.get(ip) || { count: 0, reset: now };
+  if (now - entry.reset > 15 * 60 * 1000) entry = { count: 0, reset: now };
+  if (entry.count >= 10) {
+    return res.status(429).json({ error: 'Too many login attempts. Try again in 15 minutes.' });
+  }
+  entry.count += 1;
+  loginAttempts.set(ip, entry);
+  next();
+}
+
 // --- Admin Login Route ---
-app.post('/api/login', (req, res) => {
+app.post('/api/login', loginRateLimit, (req, res) => {
   const { username, password } = req.body;
   db.get('SELECT * FROM users WHERE username = ? AND role = ? ORDER BY id DESC LIMIT 1', [username, 'admin'], async (err, user) => {
     if (err) return res.status(500).json({ error: 'Database error' });
@@ -154,8 +168,11 @@ app.post('/api/login', (req, res) => {
     }
   });
 });
-// --- Admin Registration Route (for initial setup only, remove or protect in production) ---
+// --- Admin Registration Route (disabled in production unless ALLOW_ADMIN_REGISTER=true) ---
 app.post('/api/register-admin', async (req, res) => {
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_ADMIN_REGISTER !== 'true') {
+    return res.status(403).json({ error: 'Admin registration is disabled in production.' });
+  }
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
   try {
@@ -259,7 +276,7 @@ const upload = multer({ storage: storage });
 app.use('/uploads', express.static(uploadDir));
 // --- Image Upload Endpoint ---
 // POST /api/products/upload-image
-app.post('/api/products/upload-image', upload.single('image'), (req, res) => {
+app.post('/api/products/upload-image', requireAdmin, upload.single('image'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
@@ -293,8 +310,7 @@ app.post('/api/shipping-quote', (req, res) => {
 });
 
 // --- Create Product Endpoint ---
-// POST /api/products
-app.post('/api/products', (req, res) => {
+app.post('/api/products', requireAdmin, (req, res) => {
   const {
     name,
     image,
@@ -398,48 +414,10 @@ const initDb = () => {
     role TEXT NOT NULL
   )`);
 };
-initDb();
-
-function ensureProductColumns() {
-  db.all('PRAGMA table_info(products)', [], (err, rows) => {
-    if (err) return;
-    const existing = new Set(rows.map((r) => r.name));
-    const requiredColumns = [
-      { name: 'category', ddl: 'ALTER TABLE products ADD COLUMN category TEXT' },
-      { name: 'description', ddl: 'ALTER TABLE products ADD COLUMN description TEXT' },
-      { name: 'size_us', ddl: 'ALTER TABLE products ADD COLUMN size_us TEXT' },
-      { name: 'size_eu', ddl: 'ALTER TABLE products ADD COLUMN size_eu TEXT' },
-    ];
-    requiredColumns.forEach((column) => {
-      if (!existing.has(column.name)) {
-        db.run(column.ddl);
-      }
-    });
-  });
-}
-
-ensureProductColumns();
-
-function ensureOrderColumns() {
-  db.all('PRAGMA table_info(orders)', [], (err, rows) => {
-    if (err) return;
-    const existing = new Set(rows.map((r) => r.name));
-    const cols = [
-      { name: 'customer_name', ddl: 'ALTER TABLE orders ADD COLUMN customer_name TEXT' },
-      { name: 'customer_email', ddl: 'ALTER TABLE orders ADD COLUMN customer_email TEXT' },
-      { name: 'customer_phone', ddl: 'ALTER TABLE orders ADD COLUMN customer_phone TEXT' },
-      { name: 'country', ddl: 'ALTER TABLE orders ADD COLUMN country TEXT' },
-      { name: 'address', ddl: 'ALTER TABLE orders ADD COLUMN address TEXT' },
-      { name: 'payment_method', ddl: 'ALTER TABLE orders ADD COLUMN payment_method TEXT' },
-      { name: 'notes', ddl: 'ALTER TABLE orders ADD COLUMN notes TEXT' },
-      { name: 'items_json', ddl: 'ALTER TABLE orders ADD COLUMN items_json TEXT' },
-      { name: 'order_reference', ddl: 'ALTER TABLE orders ADD COLUMN order_reference TEXT' },
-    ];
-    cols.forEach((c) => { if (!existing.has(c.name)) db.run(c.ddl); });
-  });
-}
-
-ensureOrderColumns();
+db.serialize(() => {
+  initDb();
+  ensureDefaultAdmin();
+});
 
 function ensureDefaultAdmin() {
   const username = process.env.DEFAULT_ADMIN_USER || 'admin';
@@ -468,8 +446,6 @@ function ensureDefaultAdmin() {
     });
   });
 }
-
-ensureDefaultAdmin();
 
 
 // --- Product Endpoints ---
@@ -614,6 +590,7 @@ app.post('/api/contact', (req, res) => {
     [name, email, subject || '', message],
     function (err) {
       if (err) return res.status(500).json({ error: err.message });
+      notifyContactInquiry({ name, email, subject, message }).catch(() => {});
       res.json({ success: true, id: this.lastID });
     }
   );
@@ -727,6 +704,19 @@ app.post('/api/checkout', (req, res) => {
     [session, orderTotal, curr, name, email, phone, country, address, paymentMethod || 'MTN', notes || '', JSON.stringify(items), orderReference],
     function (err) {
       if (err) return res.status(500).json({ error: err.message });
+      notifyNewOrder({
+        orderReference,
+        name,
+        email,
+        phone,
+        country,
+        address,
+        paymentMethod: paymentMethod || 'MTN',
+        notes,
+        currency: curr,
+        total: orderTotal,
+        itemsJson: JSON.stringify(items),
+      }).catch(() => {});
       res.json({
         success: true,
         orderId: this.lastID,
@@ -737,6 +727,64 @@ app.post('/api/checkout', (req, res) => {
       });
     }
   );
+});
+
+// --- Staff dashboard (Kistie-style operations) ---
+const LOW_STOCK_THRESHOLD = Number(process.env.LOW_STOCK_THRESHOLD || 5);
+
+app.get('/api/staff/dashboard', requireAdmin, (_req, res) => {
+  const stats = { pendingOrders: 0, totalOrders: 0, lowStockCount: 0, recentInquiries: 0 };
+  db.get("SELECT COUNT(*) AS c FROM orders WHERE status = 'pending'", [], (e1, pendingRow) => {
+    if (e1) return res.status(500).json({ error: e1.message });
+    stats.pendingOrders = pendingRow?.c || 0;
+    db.get('SELECT COUNT(*) AS c FROM orders', [], (e2, totalRow) => {
+      if (e2) return res.status(500).json({ error: e2.message });
+      stats.totalOrders = totalRow?.c || 0;
+      db.get(`SELECT COUNT(*) AS c FROM products WHERE stock <= ?`, [LOW_STOCK_THRESHOLD], (e3, lowRow) => {
+        if (e3) return res.status(500).json({ error: e3.message });
+        stats.lowStockCount = lowRow?.c || 0;
+        db.get('SELECT COUNT(*) AS c FROM contact_inquiries', [], (e4, inqRow) => {
+          if (e4) return res.status(500).json({ error: e4.message });
+          stats.recentInquiries = inqRow?.c || 0;
+          db.all(
+            'SELECT * FROM orders ORDER BY created_at DESC LIMIT 20',
+            [],
+            (e5, orders) => {
+              if (e5) return res.status(500).json({ error: e5.message });
+              db.all(
+                `SELECT id, name, stock FROM products WHERE stock <= ? ORDER BY stock ASC LIMIT 10`,
+                [LOW_STOCK_THRESHOLD],
+                (e6, lowStock) => {
+                  if (e6) return res.status(500).json({ error: e6.message });
+                  db.all(
+                    'SELECT * FROM contact_inquiries ORDER BY created_at DESC LIMIT 10',
+                    [],
+                    (e7, inquiries) => {
+                      if (e7) return res.status(500).json({ error: e7.message });
+                      res.json({ stats, orders: orders || [], lowStock: lowStock || [], inquiries: inquiries || [] });
+                    }
+                  );
+                }
+              );
+            }
+          );
+        });
+      });
+    });
+  });
+});
+
+app.patch('/api/staff/orders/:id', requireAdmin, (req, res) => {
+  const { status } = req.body || {};
+  const allowed = ['pending', 'paid', 'shipped', 'cancelled'];
+  if (!allowed.includes(status)) {
+    return res.status(400).json({ error: 'Invalid status. Use pending, paid, shipped, or cancelled.' });
+  }
+  db.run('UPDATE orders SET status = ? WHERE id = ?', [status, req.params.id], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    if (this.changes === 0) return res.status(404).json({ error: 'Order not found' });
+    res.json({ success: true, id: Number(req.params.id), status });
+  });
 });
 
 // Delete a product (and its image file) - Admin only
@@ -785,11 +833,16 @@ if (fs.existsSync(path.join(REACT_DIST, 'index.html'))) {
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`SilverFox backend running on http://localhost:${PORT}`);
+const listenPort = process.env.NODE_ENV === 'test' ? 0 : PORT;
+const server = app.listen(listenPort, () => {
+  const addr = server.address();
+  const actualPort = typeof addr === 'object' && addr ? addr.port : listenPort;
+  console.log(`SilverFox backend running on http://localhost:${actualPort}`);
   if (fs.existsSync(path.join(REACT_DIST, 'index.html'))) {
-    console.log(`Storefront: http://localhost:${PORT} (production build)`);
-  } else {
+    console.log(`Storefront: http://localhost:${actualPort} (production build)`);
+  } else if (process.env.NODE_ENV !== 'test') {
     console.log(`Storefront: ${FRONTEND_DEV} (run "npm run dev" — backend is API only until you build)`);
   }
 });
+
+module.exports = { app, server, db };

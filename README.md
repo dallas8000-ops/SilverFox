@@ -1,5 +1,7 @@
 # SilverFox
 
+[![CI](https://github.com/dallas8000-ops/SilverFox/actions/workflows/ci.yml/badge.svg)](https://github.com/dallas8000-ops/SilverFox/actions/workflows/ci.yml)
+
 **CI** · Live men's fashion ecommerce — shipping from **Kampala**, serving customers worldwide.
 
 Production **React + Express** storefront + staff admin on **Railway** / SQLite (PostgreSQL optional), with Vite dev proxy for local work.
@@ -47,7 +49,9 @@ Payments are confirmed by staff in the real world (boutique + East Africa mobile
 | Checkout | `/checkout/` | Order capture, payment method, Kampala dispatch |
 | Contact | `/contact/` | Inquiry form → database |
 | Terms | `/terms/` | Terms of Service |
-| Staff | `/staff/login/` | Admin inventory & orders |
+| Staff dashboard | `/staff/dashboard/` | Orders, low stock, inquiries |
+| Staff inventory | `/staff/inventory/` | Product CRUD |
+| Staff | `/staff/login/` | Admin login (admin / admin) |
 | Health | `/health/` | `{"status":"ok","service":"silverfox"}` |
 
 ---

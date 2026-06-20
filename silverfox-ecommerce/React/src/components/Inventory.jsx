@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { productImageUrl } from '../utils/productImageUrl';
 import { useCart } from '../context/CartContext';
 
 const fetchOpts = { credentials: 'include' };
 
 const Inventory = () => {
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   // Removed unused loading state
   const [error, setError] = useState(null);
@@ -32,13 +33,13 @@ const Inventory = () => {
       if (res.ok) {
         const data = await res.json();
         setAdminLoggedIn(!!data.admin);
-      } else {
-        setAdminLoggedIn(false);
+        return !!data.admin;
       }
+      setAdminLoggedIn(false);
+      return false;
     } catch {
       setAdminLoggedIn(false);
-    } finally {
-      // adminLoading removed
+      return false;
     }
   };
 
@@ -46,8 +47,14 @@ const Inventory = () => {
   const [initialLoaded, setInitialLoaded] = useState(false);
 
   useEffect(() => {
-    Promise.all([checkAdmin(), fetchProducts()]).then(() => setInitialLoaded(true));
-  }, []);
+    checkAdmin().then((isAdmin) => {
+      if (!isAdmin) {
+        navigate('/staff/login', { replace: true });
+        return;
+      }
+      fetchProducts().then(() => setInitialLoaded(true));
+    });
+  }, [navigate]);
 
   const fetchProducts = async () => {
     setError(null);
@@ -95,7 +102,7 @@ const Inventory = () => {
     } catch {
       /* ignore */
     }
-    await checkAdmin();
+    navigate('/staff/login');
   };
 
   const handleEdit = (product) => {
@@ -299,8 +306,13 @@ const Inventory = () => {
         minHeight:'70vh',
         position:'relative',
       }}>
-        <h2 style={{marginBottom:'0.5rem',fontWeight:700,letterSpacing:'0.03em'}}>Staff Login</h2>
-        <p style={{ marginBottom: '1.5rem', color: '#666', fontSize: '0.9rem', textAlign: 'center' }}>Username: <strong>admin</strong> · Password: <strong>admin</strong></p>
+        <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+          <h2 style={{marginBottom:0,fontWeight:700,letterSpacing:'0.03em'}}>Inventory Management</h2>
+          <div className="d-flex gap-2">
+            <Link to="/staff/dashboard" className="btn btn-sm sf-filter-btn">Dashboard</Link>
+            <button type="button" onClick={handleLogout} className="btn btn-sm btn-secondary">Sign out</button>
+          </div>
+        </div>
         <div style={{ marginBottom: '1.25rem', padding: '1rem', background: '#eef3ff', borderRadius: '0.75rem', border: '1px solid #d7e3ff' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
             <div>
@@ -356,20 +368,7 @@ const Inventory = () => {
         </div>
 
         <div style={{ marginBottom: '1.25rem', padding: '1rem', background: '#f1f3f5', borderRadius: '0.75rem' }}>
-          {adminLoggedIn ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-              <span style={{ fontWeight: 600, color: '#186' }}>Signed in as admin.</span>
-              <button type="button" onClick={handleLogout} style={{ padding: '0.35rem 1rem', borderRadius: '0.5rem', border: 'none', background: '#6c757d', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>Sign out</button>
-            </div>
-          ) : (
-            <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: '420px' }}>
-              <strong style={{ fontSize: '0.95rem' }}>Admin sign-in (required for edit/delete)</strong>
-              <input type="text" value={loginUser} onChange={(e) => setLoginUser(e.target.value)} placeholder="Username" required autoComplete="username" style={{ padding: '0.5rem', borderRadius: '0.4rem', border: '1px solid #ccc' }} />
-              <input type="password" value={loginPass} onChange={(e) => setLoginPass(e.target.value)} placeholder="Password" required autoComplete="current-password" style={{ padding: '0.5rem', borderRadius: '0.4rem', border: '1px solid #ccc' }} />
-              {loginErr && <span style={{ color: '#c00', fontSize: '0.9rem' }}>{loginErr}</span>}
-              <button type="submit" style={{ padding: '0.45rem 1.2rem', borderRadius: '0.5rem', border: 'none', background: '#007bff', color: '#fff', fontWeight: 600, cursor: 'pointer', alignSelf: 'flex-start' }}>Sign in</button>
-            </form>
-          )}
+          <span style={{ fontWeight: 600, color: '#186' }}>Signed in as admin</span>
         </div>
 
         {!initialLoaded ? (

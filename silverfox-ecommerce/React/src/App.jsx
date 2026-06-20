@@ -2,7 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 
 import Shop from './components/Shop';
-import Inventory from './components/Inventory';
+import StaffLogin from './components/StaffLogin';
+import StaffDashboard from './components/StaffDashboard';
 import Contact from './components/Contact';
 import Terms from './components/Terms';
 import Checkout from './components/Checkout';
@@ -114,7 +115,9 @@ function App() {
             <Route path="/terms" element={<Terms />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<Checkout />} />
-            <Route path="/staff/login" element={<Inventory />} />
+            <Route path="/staff/login" element={<StaffLogin />} />
+            <Route path="/staff/dashboard" element={<StaffDashboard />} />
+            <Route path="/staff/inventory" element={<Inventory />} />
             <Route path="/admin" element={<Navigate to="/staff/login" replace />} />
           </Routes>
         </Layout>
