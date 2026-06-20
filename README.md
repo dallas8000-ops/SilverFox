@@ -2,79 +2,61 @@
 
 [![CI](https://github.com/dallas8000-ops/SilverFox/actions/workflows/ci.yml/badge.svg)](https://github.com/dallas8000-ops/SilverFox/actions/workflows/ci.yml)
 
-**CI** · Live men's fashion ecommerce — shipping from **Kampala**, serving customers worldwide.
+**Men's fashion ecommerce** — shipping from **Kampala**, serving customers worldwide.
 
-Production **React + Express** storefront + staff admin on **Railway** / SQLite (PostgreSQL optional), with Vite dev proxy for local work.
-
-> **Platform note — SilverFox vs [Kistie Store](https://github.com/dallas8000-ops/Kistie-Store):** Kistie is **Django 5.2 + Django REST Framework + PostgreSQL** with a **Django-rendered** shop (`/shop/` SSR). SilverFox is **not Django** — it is a **React 19 SPA + Express + SQLite** stack deployed on Railway. Both share the same **boutique shop experience** (single `/shop/` page, filters, cart → checkout, staff dashboard, Kampala dispatch), but SilverFox uses a modern JavaScript full-stack instead of Python/Django.
+Production **Django 5.2** storefront + staff tooling + **DRF** API on **Railway** / PostgreSQL (SQLite locally), matching the [Kistie Store](https://github.com/dallas8000-ops/Kistie-Store) architecture — built for gentlemen, not women's apparel.
 
 | | |
 |---|---|
-| **Live** | SilverFox on Railway — *(set your Railway URL after deploy)* |
-| **Stack** | React 19 · Vite · Express · SQLite · Bootstrap 5 |
-| **Compare** | Kistie Store = Django 5.2 · DRF · PostgreSQL · Render |
-| **Catalog** | **128 products** — 16 per men's category (8 categories); Kistie seed = 86 items |
+| **Stack** | Django 5.2 · DRF · PostgreSQL · Gunicorn · WhiteNoise · Bootstrap 5 |
+| **Catalog** | 128 products — 16 per category (8 men's categories) |
+| **Legacy** | `silverfox-ecommerce/` React prototype — **not production** |
+
+> **Kistie Store is untouched.** SilverFox mirrors its layout and shop flow in this repo only.
 
 ---
 
-## Latest update
+## Run locally
 
-- **Kistie-style shop flow**: `/` → `/shop/` — single storefront page with filters, EU sizing, currency, quick-view modal, cart → checkout.
-- **Men's full wardrobe**: suits, shirts, trousers, knitwear, outerwear, shoes, accessories.
-- **AI shopping assistant**: `POST /api/chat/` + floating chatbot on Shop (rule-based; optional OpenAI via env).
-- **Size guide**: `POST /api/size-recommend/` in product quick-view.
-- **Contact & checkout**: `/contact/`, `/checkout/`, order capture with mobile-money / bank transfer.
-- **Railway deploy**: `railway.toml`, health check at `/health/`, production build served from Express.
-- **Windows dev**: `scripts/start-local.ps1` — backend first, wait for health, then Vite.
+From the **repository root**:
 
----
+```bash
+python -m pip install --upgrade pip
+pip install -r requirements.txt
 
-## What it does (short)
+cd backend
+cp .env.example .env   # set DJANGO_SECRET_KEY
 
-**Shoppers:** The storefront is one **Shop** page (`/shop/`). Opening `/` sends visitors straight there. Browse with category filters, price range, search, EU/US sizing, multi-currency (EUR/USD/UGX/KES), product quick-view, add to cart, then **Cart → Checkout**.
+python manage.py migrate
+python manage.py ensure_admin      # admin / admin
+python manage.py seed_mens_catalog # 128 men's products + images
+python manage.py runserver
+```
 
-Payments are confirmed by staff in the real world (boutique + East Africa mobile-money mix); order status is updated in the staff admin panel.
+Open **http://127.0.0.1:8000/** → redirects to `/shop/`
 
-**Operations:** Staff sign-in at `/staff/login/` (inventory admin), product CRUD, order records in SQLite.
+### Windows (recommended)
 
-**Bookmark compatibility:** `/catalog/` and `/inventory/` redirect to `/shop/` (query string preserved).
-
----
-
-## Pages & features
-
-| Page | URL | What it does |
-|------|-----|--------------|
-| Entry | `/` | Redirects to `/shop/` |
-| Shop | `/shop/` | Browse, filter, quick-view, add to cart |
-| About | `/about/` | Brand story |
-| Cart | `/cart/` | Line items, totals |
-| Checkout | `/checkout/` | Order capture, payment method, Kampala dispatch |
-| Sign in | `/login/` | Shopper account login |
-| Sign up | `/signup/` | Create shopper account |
-| Order history | `/account/orders/` | Signed-in shopper orders |
-| Contact | `/contact/` | Inquiry form → database + SMTP |
-| Terms | `/terms/` | Terms of Service |
-| Staff dashboard | `/staff/dashboard/` | Orders, low stock, inquiries |
-| Staff inventory | `/staff/inventory/` | Product CRUD |
-| Staff | `/staff/login/` | Admin login (admin / admin) |
-| Health | `/health/` | `{"status":"ok","service":"silverfox"}` |
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start-local.ps1
+```
 
 ---
 
-## JSON API
+## Pages (Kistie-style)
 
-| Area | Path | Notes |
-|------|------|-------|
-| Products | `GET /api/products` | Full catalog |
-| Exchange rates | `GET /api/exchange-rates` | EUR base |
-| Chat (assistant) | `POST /api/chat/` | Men's fashion shopping assistant |
-| Size guide | `POST /api/size-recommend/` | Quick-view sizing |
-| Contact | `POST /api/contact/` | Store inquiries |
-| Checkout | `POST /api/checkout/` | Place order (links to account when signed in) |
-| Shopper auth | `POST /api/signup`, `POST /api/shopper/login`, `GET /api/account/me`, `GET /api/account/orders` | Accounts + order history |
-| Payments | `POST /api/payments/initiate` | Mobile money stub (MTN/Airtel/M-Pesa) |
-| Admin | `POST /api/login` | Staff session |
+| Page | URL |
+|------|-----|
+| Shop | `/shop/` |
+| Cart → Checkout | `/cart/` → `/checkout/` |
+| Sign up / Sign in | `/signup/` `/login/` |
+| Order history | `/account/orders/` |
+| Staff dashboard | `/staff/dashboard/` |
+| Staff login | `/staff/login/` (admin / admin) |
+| Django admin | `/admin/` |
+| Health | `/health/` |
+
+Legacy redirects: `/catalog/` and `/inventory/` → `/shop/`
 
 ---
 
@@ -82,102 +64,55 @@ Payments are confirmed by staff in the real world (boutique + East Africa mobile
 
 ```
 SilverFox/
-├── package.json              # Root scripts (dev, Railway build/start)
-├── railway.toml              # Railway deploy config
-├── scripts/
-│   ├── dev.js                # Concurrent backend + Vite
-│   └── start-local.ps1       # Windows: backend first, then Vite
-├── start-silverfox.bat       # Windows quick start
-└── silverfox-ecommerce/
-    ├── backend/              # Express API, SQLite, seed scripts
-    │   ├── index.js
-    │   ├── seed-mens-clothing.js
-    │   └── seed-if-empty.js  # Railway: seed only if DB empty
-    └── React/                # Vite + React SPA (production storefront)
-        └── src/components/Shop.jsx
+├── requirements.txt       # Python deps (install from repo root)
+├── backend/               # Django project (production storefront)
+│   ├── manage.py
+│   ├── core/              # settings, urls, templates, static
+│   ├── inventory/         # products + DRF /api/inventory/
+│   ├── cart/              # cart + orders
+│   └── pages/             # contact inquiries
+├── scripts/start-local.ps1
+├── railway.toml           # Railway deploy
+└── silverfox-ecommerce/   # LEGACY React/Express — reference only
 ```
 
 ---
 
-## Run locally
+## JSON API
 
-From the repository root:
+| Path | Notes |
+|------|-------|
+| `GET /api/inventory/products/` | DRF product list |
+| `GET /api/inventory/categories/` | Categories |
+| `POST /api/chat/` | Shopping assistant |
+| `POST /api/size-recommend/` | Size guidance |
+
+---
+
+## Deploy (Railway)
+
+1. Connect repo, add **PostgreSQL** plugin → sets `DATABASE_URL`
+2. Set `DJANGO_SECRET_KEY`, `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`
+3. Build runs migrate + seed automatically (`railway.toml`)
+
+---
+
+## Stripe (planned)
+
+Django server-side Checkout + webhooks — same pattern as Kistie payment stubs. Set `STRIPE_SECRET_KEY` when ready.
+
+---
+
+## Seed catalog
 
 ```bash
-npm run install-all
-npm run dev
+cd backend
+python manage.py seed_mens_catalog        # skip if products exist
+python manage.py seed_mens_catalog --force  # replace all products
 ```
-
-Open **http://localhost:5173/shop**
-
-### Recommended (Windows)
-
-```powershell
-npm run start:local
-```
-
-Starts Django-style: backend → wait for `/health/` → Vite → opens browser.
-
-### Production build (single port)
-
-```bash
-npm run build-frontend
-npm run start-backend
-```
-
-Open **http://localhost:3001/shop** — Express serves the React build + API.
-
----
-
-## Deploy on Railway
-
-1. Create a new Railway project from this repo.
-2. Railway uses `railway.toml`:
-   - **Build:** `npm run railway:build` (install deps + Vite build)
-   - **Start:** `npm run railway:start` (seed if empty + Express on `PORT`)
-   - **Health:** `/health/`
-3. Set environment variables in Railway:
-
-| Variable | Purpose |
-|----------|---------|
-| `SESSION_SECRET` | Express session secret (required in prod) |
-| `CORS_ORIGINS` | Your Railway URL, e.g. `https://silverfox.up.railway.app` |
-| `OPENAI_API_KEY` | Optional — enables AI chat instead of rule-based replies |
-| `OPENAI_MODEL` | Optional (default `gpt-4o-mini`) |
-| `MTN_API_KEY` / `AIRTEL_API_KEY` / `MPESA_API_KEY` | Optional — mobile money integration |
-
-4. Deploy — storefront and API share one service URL.
-
----
-
-## Seed inventory
-
-```bash
-cd silverfox-ecommerce/backend
-node seed-mens-catalog.js    # Full re-seed — 128 products (16 × 8 categories)
-npm run seed:catalog         # Same, from repo root
-node seed-if-empty.js        # Seed only if catalog is empty (Railway)
-```
-
-Product images live in `silverfox-ecommerce/React/public/images/`.
-
----
-
-## Optional: AI settings
-
-Set in Railway or `backend/.env` (never commit secrets):
-
-| Variable | Purpose |
-|----------|---------|
-| `OPENAI_API_KEY` | OpenAI for `/api/chat/` |
-| `OPENAI_MODEL` | Model override |
-
-Without keys, the chatbot uses built-in rules for sizing, shipping, and men's categories.
 
 ---
 
 ## Contact
 
-Questions: **info@silverfox.com**
-
-SilverFox — *Premium Style for the Distinguished Gentleman.*
+info@silverfox.com

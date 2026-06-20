@@ -1,21 +1,18 @@
-# SilverFox — start backend first, wait for /health/, then Vite (Kistie-style dev flow)
+# SilverFox — Django first, wait for /health/ (Kistie-style)
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
-$BackendDir = Join-Path $Root "silverfox-ecommerce\backend"
-$FrontendDir = Join-Path $Root "silverfox-ecommerce\React"
-$HealthUrl = "http://127.0.0.1:3001/health"
+$BackendDir = Join-Path $Root "backend"
+$HealthUrl = "http://127.0.0.1:8000/health/"
 
 Write-Host ""
 Write-Host "========================================"
-Write-Host "  SilverFox — local dev"
+Write-Host "  SilverFox Django — local dev"
 Write-Host "========================================"
 Write-Host ""
 
-# Start backend
-Write-Host "Starting backend..."
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$BackendDir'; npm start"
+Write-Host "Starting Django (port 8000)..."
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$BackendDir'; python manage.py runserver"
 
-# Wait for health
 $ready = $false
 for ($i = 0; $i -lt 30; $i++) {
   Start-Sleep -Seconds 1
@@ -24,19 +21,16 @@ for ($i = 0; $i -lt 30; $i++) {
     if ($r.StatusCode -eq 200) { $ready = $true; break }
   } catch { }
 }
-if (-not $ready) {
-  Write-Warning "Backend health check timed out — starting Vite anyway."
+
+if ($ready) {
+  Write-Host "Django ready at $HealthUrl"
 } else {
-  Write-Host "Backend ready at $HealthUrl"
+  Write-Warning "Health check timed out — is Python/Django installed?"
 }
 
-# Start Vite
-Write-Host "Starting Vite frontend..."
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$FrontendDir'; npm run dev"
-
-Start-Sleep -Seconds 3
 Write-Host ""
-Write-Host "  Storefront: http://localhost:5173/shop"
-Write-Host "  API:        http://localhost:3001/api"
+Write-Host "  Storefront: http://127.0.0.1:8000/shop/"
+Write-Host "  Staff:      http://127.0.0.1:8000/staff/login/"
+Write-Host "  Admin:      http://127.0.0.1:8000/admin/"
 Write-Host ""
-Start-Process "http://localhost:5173/shop"
+Start-Process "http://127.0.0.1:8000/shop/"

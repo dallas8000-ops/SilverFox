@@ -1,2 +1,10 @@
 node_modules
 /React/
+__pycache__/
+*.py[cod]
+.env
+backend/db.sqlite3
+backend/staticfiles/
+*.egg-info/
+.venv/
+venv/

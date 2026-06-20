@@ -1,0 +1,107 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  --sf-charcoal: #1a1a1f;
+  --sf-slate: #2d3142;
+  --sf-gold: #c9a962;
+  --sf-gold-dark: #a88b4a;
+  --sf-cream: #f7f4ef;
+  --sf-border: #e5dfd4;
+  --sf-text-muted: #6b6560;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--sf-cream);
+  color: var(--sf-charcoal);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.sf-display { font-family: 'Cormorant Garamond', serif; }
+
+.sf-announcement {
+  background: var(--sf-charcoal);
+  color: var(--sf-gold);
+  text-align: center;
+  padding: 0.5rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+}
+
+.sf-navbar {
+  background: var(--sf-slate) !important;
+  border-bottom: 2px solid var(--sf-gold);
+}
+
+.sf-brand {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.75rem !important;
+  font-weight: 700;
+  color: var(--sf-gold) !important;
+  letter-spacing: 0.08em;
+}
+
+.sf-nav-link { color: rgba(255,255,255,0.85) !important; }
+.sf-nav-link:hover { color: var(--sf-gold) !important; }
+
+.sf-section-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 700;
+  text-align: center;
+  color: var(--sf-slate);
+}
+
+.sf-btn-gold {
+  background: var(--sf-gold);
+  border: none;
+  color: var(--sf-charcoal);
+  font-weight: 600;
+  border-radius: 0;
+  padding: 0.6rem 1.5rem;
+}
+.sf-btn-gold:hover { background: var(--sf-gold-dark); color: #fff; }
+
+.sf-product-card {
+  background: #fff;
+  border: 1px solid var(--sf-border);
+  transition: box-shadow 0.2s;
+}
+.sf-product-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+
+.sf-product-card img {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  background: #eee;
+}
+
+.sf-footer {
+  background: var(--sf-charcoal);
+  color: rgba(255,255,255,0.7);
+  padding: 3rem 0 1.5rem;
+  margin-top: auto;
+}
+.sf-footer a { color: rgba(255,255,255,0.7); text-decoration: none; }
+.sf-footer a:hover { color: var(--sf-gold); }
+.sf-footer-brand {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.5rem;
+  color: var(--sf-gold);
+}
+
+.sf-category-pill {
+  border: 1px solid var(--sf-border);
+  background: #fff;
+  color: var(--sf-slate);
+  border-radius: 0;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+.sf-category-pill.active, .sf-category-pill:hover {
+  background: var(--sf-slate);
+  color: #fff;
+  border-color: var(--sf-slate);
+}

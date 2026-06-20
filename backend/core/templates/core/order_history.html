@@ -1,0 +1,27 @@
+{% extends 'core/base.html' %}
+{% block title %}My Orders{% endblock %}
+{% block content %}
+<div class="container py-5" style="max-width:900px">
+  <h1 class="sf-section-title mb-4">My Orders</h1>
+  {% if orders %}
+    <div class="table-responsive">
+      <table class="table table-sm">
+        <thead><tr><th>Reference</th><th>Date</th><th>Total</th><th>Status</th><th>Items</th></tr></thead>
+        <tbody>
+          {% for order in orders %}
+            <tr>
+              <td>{{ order.order_ref }}</td>
+              <td>{{ order.created_at|date:"M j, Y" }}</td>
+              <td>{{ order.currency }} {{ order.total_amount }}</td>
+              <td>{{ order.get_status_display }}</td>
+              <td>{% for item in order.items.all %}{{ item.product_name }} (×{{ item.quantity }}){% if not forloop.last %}, {% endif %}{% endfor %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="text-center text-muted">No orders yet. <a href="{% url 'shop' %}">Browse the shop</a></p>
+  {% endif %}
+</div>
+{% endblock %}

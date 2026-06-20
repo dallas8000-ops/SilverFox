@@ -1,0 +1,36 @@
+{% extends 'core/base.html' %}
+{% block title %}Cart{% endblock %}
+{% block content %}
+<div class="container py-5" style="max-width:800px">
+  <h1 class="sf-section-title mb-4">Cart</h1>
+  {% if items %}
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead><tr><th>Product</th><th>Size</th><th>Qty</th><th>Price</th><th></th></tr></thead>
+        <tbody>
+          {% for item in items %}
+            <tr>
+              <td>{{ item.product.name }}</td>
+              <td>{{ item.size|default:"—" }}</td>
+              <td>{{ item.quantity }}</td>
+              <td>€{{ item.product.price_usd }}</td>
+              <td>
+                <form method="post" action="{% url 'remove_cart_item' item.id %}">{% csrf_token %}
+                  <button class="btn btn-sm btn-outline-danger">Remove</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="d-flex justify-content-between align-items-center mt-3">
+      <strong>Total: {{ currency }} {{ total }}</strong>
+      <a href="{% url 'checkout' %}" class="btn sf-btn-gold">Checkout</a>
+    </div>
+  {% else %}
+    <p class="text-center text-muted">Your cart is empty.</p>
+    <div class="text-center"><a href="{% url 'shop' %}" class="btn sf-btn-gold">Continue Shopping</a></div>
+  {% endif %}
+</div>
+{% endblock %}

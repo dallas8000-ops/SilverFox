@@ -1,0 +1,60 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block title %}Shop{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h1 class="sf-section-title mb-4">Shop</h1>
+  <p class="text-center text-muted mb-4">Premium men's fashion — {{ products|length }} items</p>
+
+  <div class="d-flex flex-wrap gap-2 justify-content-center mb-3">
+    <a href="{% url 'shop' %}" class="sf-category-pill {% if active_category == 'All' %}active{% endif %}">All</a>
+    {% for cat in categories %}
+      <a href="{% url 'shop' %}?category={{ cat.name|urlencode }}" class="sf-category-pill {% if active_category == cat.name %}active{% endif %}">{{ cat.name }}</a>
+    {% endfor %}
+  </div>
+
+  <form method="get" class="row g-2 justify-content-center mb-4">
+    {% if active_category != 'All' %}<input type="hidden" name="category" value="{{ active_category }}">{% endif %}
+    <div class="col-md-5">
+      <input type="search" name="q" class="form-control" placeholder="Search products..." value="{{ search_query }}" style="border-radius:0">
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn sf-btn-gold">Search</button>
+    </div>
+  </form>
+
+  <div class="row g-4">
+    {% for product in products %}
+      <div class="col-sm-6 col-md-4 col-lg-3">
+        <div class="sf-product-card h-100">
+          {% if product.static_image %}
+            <img src="{% static 'core/images/' %}{{ product.static_image }}" alt="{{ product.name }}">
+          {% else %}
+            <div class="bg-light d-flex align-items-center justify-content-center" style="height:220px">No image</div>
+          {% endif %}
+          <div class="p-3">
+            <div class="small text-muted">{{ product.category.name }}</div>
+            <h2 class="h6 fw-semibold">{{ product.name }}</h2>
+            <p class="small text-muted mb-2">{{ product.description|truncatewords:12 }}</p>
+            <div class="fw-bold mb-2">€{{ product.price_usd }}</div>
+            <form method="post" action="{% url 'add_to_cart' product.id %}">
+              {% csrf_token %}
+              <select name="size" class="form-select form-select-sm mb-2" style="border-radius:0">
+                {% for s in product.size_list %}
+                  <option value="{{ s }}">{{ s }}</option>
+                {% empty %}
+                  <option value="">One Size</option>
+                {% endfor %}
+              </select>
+              <input type="hidden" name="quantity" value="1">
+              <button type="submit" class="btn btn-sm sf-btn-gold w-100" {% if not product.in_stock %}disabled{% endif %}>Add to Cart</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="col-12 text-center text-muted py-5">No products match your filters.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

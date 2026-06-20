@@ -1,0 +1,30 @@
+{% extends 'core/base.html' %}
+{% block title %}Checkout{% endblock %}
+{% block content %}
+<div class="container py-5" style="max-width:720px">
+  <h1 class="sf-section-title mb-4">Checkout</h1>
+  <p class="mb-4"><strong>{{ items|length }} item(s)</strong> — Total: {{ currency }} {{ total }}</p>
+  <form method="post">
+    {% csrf_token %}
+    <div class="row g-3">
+      <div class="col-md-6"><label class="form-label">Full name</label><input name="name" class="form-control" required value="{{ defaults.name|default:'' }}" style="border-radius:0"></div>
+      <div class="col-md-6"><label class="form-label">Email</label><input name="email" type="email" class="form-control" value="{{ defaults.email|default:'' }}" style="border-radius:0"></div>
+      <div class="col-md-6"><label class="form-label">Phone</label><input name="phone" class="form-control" required style="border-radius:0"></div>
+      <div class="col-md-6"><label class="form-label">Country</label><input name="country" class="form-control" required style="border-radius:0"></div>
+      <div class="col-12"><label class="form-label">Address</label><textarea name="address" class="form-control" rows="2" required style="border-radius:0"></textarea></div>
+      <div class="col-md-6">
+        <label class="form-label">Payment method</label>
+        <select name="payment_method" class="form-select" style="border-radius:0">
+          <option value="MTN">MTN Mobile Money</option>
+          <option value="Airtel">Airtel Money</option>
+          <option value="M-Pesa">M-Pesa</option>
+          <option value="Bank">Bank transfer</option>
+        </select>
+      </div>
+      <div class="col-12"><label class="form-label">Notes</label><textarea name="notes" class="form-control" rows=2 style="border-radius:0"></textarea></div>
+      <input type="hidden" name="currency" value="{{ currency }}">
+      <div class="col-12"><button type="submit" class="btn sf-btn-gold w-100">Place Order</button></div>
+    </div>
+  </form>
+</div>
+{% endblock %}

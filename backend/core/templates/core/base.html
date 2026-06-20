@@ -1,0 +1,69 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}SilverFox{% endblock %} — Premium Men's Fashion</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'core/css/silverfox.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <div class="sf-announcement">Shipped from Kampala · Worldwide delivery · Premium men's fashion</div>
+  <nav class="navbar navbar-expand-lg navbar-dark sf-navbar">
+    <div class="container">
+      <a class="navbar-brand sf-brand" href="{% url 'shop' %}">SilverFox</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navMain">
+        <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
+          <li class="nav-item"><a class="nav-link sf-nav-link px-3" href="{% url 'shop' %}">Shop</a></li>
+          <li class="nav-item"><a class="nav-link sf-nav-link px-3" href="{% url 'about' %}">About</a></li>
+          <li class="nav-item"><a class="nav-link sf-nav-link px-3" href="{% url 'contact' %}">Contact</a></li>
+          <li class="nav-item"><a class="nav-link sf-nav-link px-3" href="{% url 'cart' %}">Cart{% if cart_count %} ({{ cart_count }}){% endif %}</a></li>
+          {% if user.is_authenticated %}
+            <li class="nav-item"><a class="nav-link sf-nav-link px-3" href="{% url 'order_history' %}">My Orders</a></li>
+            <li class="nav-item"><a class="nav-link sf-nav-link px-3" href="{% url 'logout' %}">Sign Out</a></li>
+          {% else %}
+            <li class="nav-item"><a class="nav-link sf-nav-link px-3" href="{% url 'login' %}">Sign In</a></li>
+            <li class="nav-item"><a class="nav-link sf-nav-link px-3" href="{% url 'signup' %}">Sign Up</a></li>
+          {% endif %}
+          <li class="nav-item"><a class="nav-link sf-nav-link px-3" href="{% url 'staff_login' %}">Staff</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <main class="flex-grow-1">
+    {% if messages %}
+      <div class="container mt-3">
+        {% for message in messages %}
+          <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags|default:'info' }}{% endif %} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="sf-footer">
+    <div class="container text-center">
+      <div class="sf-footer-brand mb-2">SilverFox</div>
+      <p class="small mb-3">Premium men's fashion · Kampala · Worldwide</p>
+      <div class="d-flex justify-content-center gap-3 small flex-wrap">
+        <a href="{% url 'shop' %}">Shop</a>
+        <a href="{% url 'contact' %}">Contact</a>
+        <a href="{% url 'terms' %}">Terms</a>
+        <a href="mailto:info@silverfox.com">info@silverfox.com</a>
+      </div>
+      <p class="small mt-3 mb-0 opacity-50">SilverFox &copy; {% now "Y" %}</p>
+    </div>
+  </footer>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>
