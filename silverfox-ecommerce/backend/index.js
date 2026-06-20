@@ -26,27 +26,51 @@ let fxCache = {
 const PORT = process.env.PORT || 3001;
 const DB_PATH = process.env.DB_PATH ? path.resolve(__dirname, process.env.DB_PATH) : path.join(__dirname, 'db.sqlite');
 
+const defaultCorsOrigins = [
+  'http://127.0.0.1:5500',
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3001',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+];
+const extraCorsOrigins = (process.env.CORS_ORIGINS || process.env.RAILWAY_PUBLIC_DOMAIN || '')
+  .split(/[,\s]+/)
+  .filter(Boolean)
+  .flatMap((host) => (host.startsWith('http') ? [host] : [`https://${host}`, `http://${host}`]));
+const corsOrigins = [...new Set([...defaultCorsOrigins, ...extraCorsOrigins])];
+
 // Middleware setup
 const corsOptions = {
-  origin: [
-    'http://127.0.0.1:5500', // static HTML dev server
-    'http://localhost:3000', // React dev server or same-origin
-    'http://localhost:3001', // Use localhost:3001 for main backend
-    'http://127.0.0.1:3001', // Allow 127.0.0.1:3001 for local dev
-    'http://localhost:5173', // Vite default dev server
-    'http://127.0.0.1:5173', // Allow 127.0.0.1:5173 for local dev
-  ],
-  credentials: true
+  origin: corsOrigins,
+  credentials: true,
 };
 app.use(cors(corsOptions));
 app.use(bodyParser.json());
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your_secret_key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 1000 * 60 * 60 * 12,
+  },
+}));
 
-// Product images: single canonical folder (see ./paths.js). Register BEFORE root static so
-// `/images/*` is never accidentally served from an obsolete secondary images folder.
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', service: 'silverfox' });
+});
+
+app.get('/health/', (_req, res) => {
+  res.json({ status: 'ok', service: 'silverfox' });
+});
+
+// Product images: single canonical folder (see ./paths.js).
 app.use('/images', express.static(PRODUCT_IMAGES_DIR));
 
-// Serve static files from the project root (one level up from backend)
-app.use(express.static(path.join(__dirname, '..')));
+// Do not serve the whole repo tree — that exposed legacy HTML (catalog-pro.html) and source files.
 
 /** Resolve a DB image value (filename or images/...) to an absolute file path for unlink */
 function resolveProductImageFile(imageValue) {
@@ -233,17 +257,6 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 // Serve uploaded images statically
 app.use('/uploads', express.static(uploadDir));
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'your_secret_key',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: false,
-    maxAge: 1000 * 60 * 60 * 12, // 12 hours
-  },
-}));
 // --- Image Upload Endpoint ---
 // POST /api/products/upload-image
 app.post('/api/products/upload-image', upload.single('image'), (req, res) => {
@@ -359,7 +372,30 @@ const initDb = () => {
     total REAL,
     currency TEXT,
     status TEXT DEFAULT 'pending',
+    customer_name TEXT,
+    customer_email TEXT,
+    customer_phone TEXT,
+    country TEXT,
+    address TEXT,
+    payment_method TEXT,
+    notes TEXT,
+    items_json TEXT,
+    order_reference TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS contact_inquiries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    subject TEXT,
+    message TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    role TEXT NOT NULL
   )`);
 };
 initDb();
@@ -383,6 +419,57 @@ function ensureProductColumns() {
 }
 
 ensureProductColumns();
+
+function ensureOrderColumns() {
+  db.all('PRAGMA table_info(orders)', [], (err, rows) => {
+    if (err) return;
+    const existing = new Set(rows.map((r) => r.name));
+    const cols = [
+      { name: 'customer_name', ddl: 'ALTER TABLE orders ADD COLUMN customer_name TEXT' },
+      { name: 'customer_email', ddl: 'ALTER TABLE orders ADD COLUMN customer_email TEXT' },
+      { name: 'customer_phone', ddl: 'ALTER TABLE orders ADD COLUMN customer_phone TEXT' },
+      { name: 'country', ddl: 'ALTER TABLE orders ADD COLUMN country TEXT' },
+      { name: 'address', ddl: 'ALTER TABLE orders ADD COLUMN address TEXT' },
+      { name: 'payment_method', ddl: 'ALTER TABLE orders ADD COLUMN payment_method TEXT' },
+      { name: 'notes', ddl: 'ALTER TABLE orders ADD COLUMN notes TEXT' },
+      { name: 'items_json', ddl: 'ALTER TABLE orders ADD COLUMN items_json TEXT' },
+      { name: 'order_reference', ddl: 'ALTER TABLE orders ADD COLUMN order_reference TEXT' },
+    ];
+    cols.forEach((c) => { if (!existing.has(c.name)) db.run(c.ddl); });
+  });
+}
+
+ensureOrderColumns();
+
+function ensureDefaultAdmin() {
+  const username = process.env.DEFAULT_ADMIN_USER || 'admin';
+  const password = process.env.DEFAULT_ADMIN_PASSWORD || 'admin';
+  bcrypt.hash(password, 10, (hashErr, hash) => {
+    if (hashErr) {
+      console.error('Failed to hash default admin password:', hashErr.message);
+      return;
+    }
+    db.get('SELECT id FROM users WHERE username = ?', [username], (selErr, row) => {
+      if (selErr) {
+        console.error('Failed to check admin user:', selErr.message);
+        return;
+      }
+      if (row) {
+        db.run('UPDATE users SET password = ?, role = ? WHERE username = ?', [hash, 'admin', username], (updErr) => {
+          if (updErr) console.error('Failed to update admin user:', updErr.message);
+          else console.log(`Admin user "${username}" is ready.`);
+        });
+      } else {
+        db.run('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', [username, hash, 'admin'], (insErr) => {
+          if (insErr) console.error('Failed to create admin user:', insErr.message);
+          else console.log(`Admin user "${username}" created (password: ${password}).`);
+        });
+      }
+    });
+  });
+}
+
+ensureDefaultAdmin();
 
 
 // --- Product Endpoints ---
@@ -516,6 +603,142 @@ app.post('/api/orders', (req, res) => {
   });
 });
 
+// --- Contact ---
+app.post('/api/contact', (req, res) => {
+  const { name, email, subject, message } = req.body || {};
+  if (!name || !email || !message) {
+    return res.status(400).json({ error: 'Name, email, and message are required.' });
+  }
+  db.run(
+    'INSERT INTO contact_inquiries (name, email, subject, message) VALUES (?, ?, ?, ?)',
+    [name, email, subject || '', message],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ success: true, id: this.lastID });
+    }
+  );
+});
+
+// --- AI shopping assistant (rule-based; optional OpenAI if configured) ---
+function buildChatReply(message) {
+  const m = String(message || '').toLowerCase();
+  if (m.includes('ship') || m.includes('delivery') || m.includes('kampala')) {
+    return 'We ship from Kampala, Uganda to customers worldwide. Delivery times depend on your country — contact us for a quote on large orders.';
+  }
+  if (m.includes('size') || m.includes('fit')) {
+    return 'Use the Size guide button in product quick-view, or tell me your usual jacket size (EU 48–56) or shirt size (S–XXL). EU sizing is shown by default.';
+  }
+  if (m.includes('suit') || m.includes('blazer')) {
+    return 'Browse Suits & Blazers for tailored two-piece suits, blazers, and formal wear. EU chest sizes 48–56 are most common.';
+  }
+  if (m.includes('pay') || m.includes('mtn') || m.includes('mobile')) {
+    return 'Checkout supports MTN Mobile Money, Airtel Money, M-Pesa, and bank transfer. Staff confirm payment before dispatch.';
+  }
+  if (m.includes('return')) {
+    return 'Unworn items in original condition may be returned within 14 days. Email info@silverfox.com before sending anything back.';
+  }
+  return 'SilverFox offers premium men\'s fashion — suits, shirts, trousers, shoes, and accessories. Browse /shop or ask about sizing, shipping, or payments.';
+}
+
+app.post('/api/chat', async (req, res) => {
+  const { message } = req.body || {};
+  if (!message) return res.status(400).json({ error: 'Message required.' });
+
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'You are SilverFox, a helpful assistant for a premium men\'s fashion store shipping from Kampala worldwide. Be concise and professional.' },
+            { role: 'user', content: message },
+          ],
+          max_tokens: 300,
+        }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const reply = data.choices?.[0]?.message?.content;
+        if (reply) return res.json({ reply, source: 'openai' });
+      }
+    } catch (e) {
+      console.warn('OpenAI chat failed:', e.message);
+    }
+  }
+
+  res.json({ reply: buildChatReply(message), source: 'rules' });
+});
+
+// --- Size recommendation ---
+app.post('/api/size-recommend', (req, res) => {
+  const { category, sizeSystem } = req.body || {};
+  const cat = String(category || '').toLowerCase();
+  const system = String(sizeSystem || 'EU').toUpperCase();
+
+  let recommended = 'M';
+  let message = 'Based on average fit, we suggest this size — adjust if you prefer a slimmer or relaxed fit.';
+
+  if (cat.includes('suit') || cat.includes('blazer') || cat.includes('outerwear')) {
+    recommended = system === 'EU' ? '50' : '40R';
+    message = 'For tailored jackets, EU 50 / US 40R fits most gentlemen ( chest ~100 cm ).';
+  } else if (cat.includes('shoe')) {
+    recommended = system === 'EU' ? '43' : '10';
+    message = 'EU 43 / US 10 is our most common shoe size.';
+  } else if (cat.includes('trouser') || cat.includes('chino')) {
+    recommended = system === 'EU' ? '50' : '34';
+    message = 'EU 50 / waist 34 is a popular trouser size.';
+  } else if (cat.includes('accessories')) {
+    recommended = 'One Size';
+    message = 'This accessory is one size fits most.';
+  } else {
+    recommended = system === 'EU' ? '52' : 'L';
+    message = 'EU 52 / US L is a safe starting point for shirts and knitwear.';
+  }
+
+  res.json({ recommended, message, sizeSystem: system });
+});
+
+// --- Checkout (order capture) ---
+app.post('/api/checkout', (req, res) => {
+  const {
+    name, email, phone, country, address, paymentMethod, notes, currency, items, total,
+  } = req.body || {};
+
+  if (!name || !email || !phone || !country || !address) {
+    return res.status(400).json({ error: 'Name, email, phone, country, and address are required.' });
+  }
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: 'Cart is empty.' });
+  }
+
+  const orderReference = `SF-${Date.now().toString(36).toUpperCase()}`;
+  const session = getSessionId(req);
+  const orderTotal = Number(total) || items.reduce((s, i) => s + (Number(i.price) || 0) * (Number(i.quantity) || 0), 0);
+  const curr = String(currency || 'EUR').toUpperCase();
+
+  db.run(
+    `INSERT INTO orders (session, total, currency, status, customer_name, customer_email, customer_phone, country, address, payment_method, notes, items_json, order_reference)
+     VALUES (?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [session, orderTotal, curr, name, email, phone, country, address, paymentMethod || 'MTN', notes || '', JSON.stringify(items), orderReference],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({
+        success: true,
+        orderId: this.lastID,
+        orderReference,
+        total: orderTotal,
+        currency: curr,
+        message: 'Order received. Complete payment and our team will confirm dispatch from Kampala.',
+      });
+    }
+  );
+});
+
 // Delete a product (and its image file) - Admin only
 app.delete('/api/products/:id', requireAdmin, (req, res) => {
   const id = req.params.id;
@@ -541,6 +764,32 @@ app.delete('/api/products/:id', requireAdmin, (req, res) => {
   });
 });
 
+// --- Frontend (React SPA) ---
+const REACT_DIST = path.join(__dirname, '..', 'React', 'dist');
+const FRONTEND_DEV = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+// Legacy static catalog from the old Kistie-style site — send users to the React app.
+const legacyPaths = ['/catalog-pro.html', '/React/public/catalog-pro.html'];
+legacyPaths.forEach((legacyPath) => {
+  app.get(legacyPath, (_req, res) => res.redirect(302, '/shop'));
+});
+
+if (fs.existsSync(path.join(REACT_DIST, 'index.html'))) {
+  app.use(express.static(REACT_DIST));
+  app.get(/^\/(?!api|images|uploads).*/, (_req, res) => {
+    res.sendFile(path.join(REACT_DIST, 'index.html'));
+  });
+} else {
+  app.get(/^\/(?!api|images|uploads).*/, (_req, res) => {
+    res.redirect(302, FRONTEND_DEV);
+  });
+}
+
 app.listen(PORT, () => {
   console.log(`SilverFox backend running on http://localhost:${PORT}`);
+  if (fs.existsSync(path.join(REACT_DIST, 'index.html'))) {
+    console.log(`Storefront: http://localhost:${PORT} (production build)`);
+  } else {
+    console.log(`Storefront: ${FRONTEND_DEV} (run "npm run dev" — backend is API only until you build)`);
+  }
 });

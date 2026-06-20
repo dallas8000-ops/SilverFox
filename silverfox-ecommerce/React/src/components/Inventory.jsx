@@ -13,7 +13,7 @@ const Inventory = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [adminLoggedIn, setAdminLoggedIn] = useState(false);
   // Removed unused adminLoading state
-  const [loginUser, setLoginUser] = useState('');
+  const [loginUser, setLoginUser] = useState('admin');
   const [loginPass, setLoginPass] = useState('');
   const [loginErr, setLoginErr] = useState(null);
   const [shippingDestination, setShippingDestination] = useState('UK');
@@ -74,7 +74,12 @@ const Inventory = () => {
         body: JSON.stringify({ username: loginUser, password: loginPass }),
       });
       if (!res.ok) {
-        setLoginErr('Invalid credentials.');
+        const data = await res.json().catch(() => ({}));
+        if (res.status >= 500) {
+          setLoginErr(data.error || 'Server error — restart with npm run dev and try again.');
+        } else {
+          setLoginErr(data.error || 'Invalid credentials. Use admin / admin.');
+        }
         return;
       }
       setLoginPass('');
@@ -294,7 +299,8 @@ const Inventory = () => {
         minHeight:'70vh',
         position:'relative',
       }}>
-        <h2 style={{marginBottom:'1.5rem',fontWeight:700,letterSpacing:'0.03em'}}>Inventory Admin</h2>
+        <h2 style={{marginBottom:'0.5rem',fontWeight:700,letterSpacing:'0.03em'}}>Staff Login</h2>
+        <p style={{ marginBottom: '1.5rem', color: '#666', fontSize: '0.9rem', textAlign: 'center' }}>Username: <strong>admin</strong> · Password: <strong>admin</strong></p>
         <div style={{ marginBottom: '1.25rem', padding: '1rem', background: '#eef3ff', borderRadius: '0.75rem', border: '1px solid #d7e3ff' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
             <div>

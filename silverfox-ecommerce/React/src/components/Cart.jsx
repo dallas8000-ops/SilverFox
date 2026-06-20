@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { productImageUrl } from '../utils/productImageUrl';
 
@@ -107,7 +108,8 @@ export default function Cart() {
               ))}
             </tbody>
           </table>
-          <div className="text-end mb-3">
+          <div className="text-end mb-3 d-flex gap-2 justify-content-end">
+            <Link to="/checkout" className="btn sf-btn-gold">Proceed to Checkout</Link>
             <button className="btn btn-secondary" onClick={clearCart}>Clear Cart</button>
           </div>
           <div className="card p-3">

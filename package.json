@@ -8,7 +8,11 @@
     "start-backend": "cd silverfox-ecommerce/backend && npm start",
     "start-frontend": "cd silverfox-ecommerce/React && npm run dev",
     "build-frontend": "cd silverfox-ecommerce/React && npm run build",
-    "dev": "node scripts/dev.js"
+    "dev": "node scripts/dev.js",
+    "start": "npm run railway:start",
+    "start:local": "powershell -ExecutionPolicy Bypass -File scripts/start-local.ps1",
+    "railway:build": "npm run install-all && npm run build-frontend",
+    "railway:start": "node silverfox-ecommerce/backend/seed-if-empty.js && node silverfox-ecommerce/backend/index.js"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

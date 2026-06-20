@@ -1,6 +1,6 @@
 @echo off
 REM SilverFox E-Commerce Platform - Startup Script
-REM Starts both backend and frontend servers
+cd /d "%~dp0"
 
 echo.
 echo ========================================
@@ -9,7 +9,6 @@ echo   Premium Style for Gentlemen
 echo ========================================
 echo.
 
-REM Check if Node.js is installed
 node --version >nul 2>&1
 if errorlevel 1 (
     echo ERROR: Node.js is not installed or not in PATH
@@ -18,28 +17,29 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Node.js is installed: 
+echo Node.js: 
 node --version
-
 echo.
-echo Starting SilverFox servers...
+echo Starting SilverFox (backend + React frontend)...
 echo.
 
-REM Start backend and frontend in separate windows
-start "SilverFox Backend" cmd /k "cd backend && npm start"
-timeout /t 3 /nobreak
+start "SilverFox Backend" cmd /k "cd /d "%~dp0silverfox-ecommerce\backend" && npm start"
+timeout /t 3 /nobreak >nul
 
-start "SilverFox Frontend" cmd /k "cd React && npm run dev"
-timeout /t 2 /nobreak
+start "SilverFox Frontend" cmd /k "cd /d "%~dp0silverfox-ecommerce\React" && npm run dev"
+timeout /t 4 /nobreak >nul
 
 echo.
 echo ========================================
-echo   Servers Starting...
+echo   SilverFox is starting
 echo ========================================
 echo.
-echo Backend:  http://localhost:3001/api
-echo Frontend: http://localhost:5173
+echo   OPEN THIS URL:  http://localhost:5173
+echo   API backend:    http://localhost:3001/api
 echo.
-echo Press Ctrl+C in each window to stop
+echo   Do NOT use catalog-pro.html or port 5500 — that is the old site.
 echo.
+
+start http://localhost:5173/shop
+
 pause

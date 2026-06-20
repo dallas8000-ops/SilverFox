@@ -6,49 +6,106 @@ const db = new sqlite3.Database(dbPath);
 
 const categories = [
   {
-    name: 'Dresses',
-    priceMin: 85,
+    name: 'Suits & Blazers',
+    priceMin: 180,
+    priceMax: 450,
+    stockMin: 3,
+    stockMax: 12,
+    usSizes: '38R,40R,42R,44R,46R',
+    euSizes: '48,50,52,54,56',
+    description:
+      'Expertly tailored suit with structured shoulders, smooth drape, and refined finishing for boardroom and formal occasions.',
+  },
+  {
+    name: 'Dress Shirts',
+    priceMin: 55,
+    priceMax: 120,
+    stockMin: 8,
+    stockMax: 30,
+    usSizes: 'S,M,L,XL,XXL',
+    euSizes: '48,50,52,54,56',
+    description:
+      'Premium cotton dress shirt with crisp collar, precise stitching, and a polished fit for professional wear.',
+  },
+  {
+    name: 'Trousers & Chinos',
+    priceMin: 65,
     priceMax: 145,
+    stockMin: 6,
+    stockMax: 24,
+    usSizes: '30,32,34,36,38,40',
+    euSizes: '46,48,50,52,54',
+    description:
+      'Tailored trousers with clean lines, comfortable stretch, and versatile styling from office to evening.',
+  },
+  {
+    name: 'Casual Shirts',
+    priceMin: 45,
+    priceMax: 95,
+    stockMin: 10,
+    stockMax: 28,
+    usSizes: 'S,M,L,XL,XXL',
+    euSizes: '48,50,52,54,56',
+    description:
+      'Relaxed-fit casual shirt in breathable fabric — ideal for weekends, travel, and smart-casual dressing.',
+  },
+  {
+    name: 'Knitwear',
+    priceMin: 75,
+    priceMax: 165,
+    stockMin: 5,
+    stockMax: 18,
+    usSizes: 'S,M,L,XL,XXL',
+    euSizes: '48,50,52,54,56',
+    description:
+      'Fine-gauge knit with soft hand-feel and classic silhouette — a refined layer for cooler days.',
+  },
+  {
+    name: 'Outerwear',
+    priceMin: 120,
+    priceMax: 380,
     stockMin: 4,
     stockMax: 14,
-    usSizes: 'US 4,6,8,10,12',
-    euSizes: 'EU 36,38,40,42,44',
+    usSizes: 'S,M,L,XL,XXL',
+    euSizes: '48,50,52,54,56',
     description:
-      'Elegant occasion dress with premium finishing, flattering silhouette, and comfortable structured lining for all-day wear.',
+      'Premium outerwear with structured cut and quality lining — built for warmth without sacrificing style.',
   },
   {
-    name: 'Suits',
-    priceMin: 140,
-    priceMax: 240,
-    stockMin: 2,
-    stockMax: 9,
-    usSizes: 'US 6,8,10,12,14',
-    euSizes: 'EU 38,40,42,44,46',
+    name: 'Shoes',
+    priceMin: 95,
+    priceMax: 320,
+    stockMin: 4,
+    stockMax: 16,
+    usSizes: '8,9,10,11,12',
+    euSizes: '41,42,43,44,45',
     description:
-      'Tailored suit set with polished cut, smooth drape, and versatile styling suited for professional and formal occasions.',
+      'Hand-finished leather footwear with cushioned insole and durable sole — the foundation of a polished look.',
   },
   {
-    name: 'Cocktail & Evening',
-    priceMin: 120,
-    priceMax: 210,
-    stockMin: 3,
-    stockMax: 10,
-    usSizes: 'US 4,6,8,10',
-    euSizes: 'EU 36,38,40,42',
-    description:
-      'Statement evening piece featuring refined details and balanced structure, designed to deliver a confident luxury look.',
-  },
-  {
-    name: 'Daywear',
-    priceMin: 65,
-    priceMax: 120,
+    name: 'Accessories',
+    priceMin: 35,
+    priceMax: 350,
     stockMin: 6,
-    stockMax: 20,
-    usSizes: 'US 2,4,6,8,10,12',
-    euSizes: 'EU 34,36,38,40,42,44',
+    stockMax: 30,
+    usSizes: 'One Size',
+    euSizes: 'One Size',
     description:
-      'Modern daywear essential with breathable comfort, clean lines, and easy styling from workday to weekend.',
+      'Refined finishing touches — belts, ties, watches, and leather goods that complete the gentleman\'s wardrobe.',
   },
+];
+
+const mensNames = [
+  'Charcoal Slim-Fit Suit', 'Navy Two-Piece Suit', 'White Oxford Shirt',
+  'Slim Navy Chinos', 'Merino V-Neck Sweater', 'Wool Overcoat',
+  'Brown Leather Oxford', 'Cognac Leather Belt', 'Midnight Blue Blazer',
+  'Light Blue Poplin Shirt', 'Khaki Tailored Pants', 'Navy Linen Shirt',
+  'Charcoal Crew Neck Knit', 'Navy Trench Coat', 'Black Cap-Toe Derby',
+  'Silk Tie Set', 'Graphite Windowpane Suit', 'French Cuff Shirt',
+  'Grey Wool Trousers', 'White Polo Shirt', 'Cashmere Cardigan',
+  'Leather Bomber Jacket', 'Tan Suede Loafers', 'Chronograph Watch',
+  'Black Peak Lapel Tuxedo', 'Striped Business Shirt', 'Stretch Slim Chinos',
+  'Checked Flannel Shirt', 'Navy Cable Knit', 'Camel Topcoat', 'Chelsea Boot',
 ];
 
 function hashCode(input) {
@@ -64,21 +121,15 @@ function pickCategory(seed) {
 }
 
 function priceFromRange(min, max, seed) {
-  const spread = max - min;
-  const step = (seed % (spread + 1));
-  return Number((min + step).toFixed(2));
+  return Number((min + (seed % (max - min + 1))).toFixed(2));
 }
 
 function stockFromRange(min, max, seed) {
-  const spread = max - min;
-  return min + (seed % (spread + 1));
+  return min + (seed % (max - min + 1));
 }
 
 function titleFromImage(image, index) {
-  const core = (image || '').replace(/\.[^.]+$/, '');
-  const numeric = core.match(/(\d{6,})/g);
-  const suffix = numeric && numeric.length ? numeric[numeric.length - 1].slice(-4) : String(index + 1).padStart(3, '0');
-  return `Signature Look ${suffix}`;
+  return mensNames[index % mensNames.length];
 }
 
 db.all("SELECT id, name, image FROM products WHERE image LIKE 'Screenshot %'", [], (err, rows) => {
@@ -129,7 +180,7 @@ db.all("SELECT id, name, image FROM products WHERE image LIKE 'Screenshot %'", [
         }
         completed += 1;
         if (completed === rows.length) {
-          console.log(`Enriched ${rows.length} screenshot products with realistic pricing, sizes, and descriptions.`);
+          console.log(`Enriched ${rows.length} products with men's clothing data.`);
           db.close();
         }
       }
