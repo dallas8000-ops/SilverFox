@@ -97,6 +97,8 @@ SilverFox is **stripe exempt** on the portfolio until Stripe checkout ships.
 
 In the automation hub (**silverfox** project → **Push env vars to Railway**), choose preset **SilverFox (Django men's)**. It pushes `DEBUG`, `DJANGO_ENABLE_ADMIN`, `DATABASE_URL=${{Postgres.DATABASE_URL}}`, and CSRF hosts for `silverfox-production.up.railway.app`. Vault must contain `DJANGO_SECRET_KEY` and `RAILWAY_API_TOKEN`.
 
+**Full setup** on the silverfox project also pushes Railway env vars automatically when **Push Railway env vars** is checked (default) — no manual Service ID required if the Railway project is named **SilverFox**.
+
 ## 8. Public URL on portfolio
 
 Update [`deploy.config.json`](../deploy.config.json) and FrontlineDigital `portfolioLiveUrls.silverfox` if Railway assigns a hostname other than `silverfox-production.up.railway.app`.
