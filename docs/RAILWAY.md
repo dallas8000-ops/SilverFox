@@ -63,6 +63,12 @@ Good runtime log:
 [silverfox] gunicorn on 0.0.0.0:8080
 ```
 
+If migrate fails with `relation "core_staffportalconfig" already exists`, redeploy after the latest commit (startup uses `migrate --fake-initial`). Or run once in **Railway → Console**:
+
+```bash
+python backend/manage.py migrate --noinput --fake-initial
+```
+
 ## 6. Verify
 
 ```text

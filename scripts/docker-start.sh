@@ -1,7 +1,9 @@
 #!/bin/sh
 set -e
 echo "[silverfox] migrate..."
-python backend/manage.py migrate --noinput
+# --fake-initial: tables may already exist if migrate ran during an earlier
+# Nixpacks build or from a concurrent container start on redeploy.
+python backend/manage.py migrate --noinput --fake-initial
 echo "[silverfox] admin + catalog..."
 python backend/manage.py ensure_admin
 python backend/manage.py seed_mens_catalog
