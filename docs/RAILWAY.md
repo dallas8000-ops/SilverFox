@@ -69,6 +69,8 @@ If migrate fails with `relation "core_staffportalconfig" already exists`, redepl
 python backend/manage.py migrate --noinput --fake-initial
 ```
 
+If `sync_catalog` fails with `column inventory_product.static_image does not exist`, deploy the latest commit — migration `inventory.0003_repair_legacy_product_columns` adds missing columns on Postgres.
+
 ## 6. Verify
 
 ```text
