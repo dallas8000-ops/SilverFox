@@ -91,47 +91,10 @@ SilverFox/
 
 ## Deploy (Railway only)
 
-Production is **Railway** — not Render. `railway.toml` and `deploy.config.json` are configured for the [Deployment & Stripe Automation Center](https://stripe-installer.gilliomfrontlinedigital.com/login) pipeline.
+**Railway does not auto-set Django variables** — only `RAILWAY_*` system vars. You must add `DJANGO_SECRET_KEY`, `DEBUG=False`, and link Postgres `DATABASE_URL`.
 
-### Railway setup
-
-1. **New project** → **Deploy from GitHub** → `dallas8000-ops/SilverFox`
-2. Add **PostgreSQL** plugin → Railway sets `DATABASE_URL`
-3. **Variables** on the web service:
-
-| Variable | Value |
-|----------|--------|
-| `DJANGO_SECRET_KEY` | Random secret (64+ chars) |
-| `DEBUG` | `False` |
-| `ALLOWED_HOSTS` | `.railway.app,.up.railway.app` (optional — auto-detected) |
-| `CSRF_TRUSTED_ORIGINS` | `https://your-service.up.railway.app` |
-
-`RAILWAY_PUBLIC_DOMAIN` is injected by Railway automatically.
-
-4. Deploy — build runs migrate, seed, and catalog sync (`railway.toml`)
-5. Verify: `GET https://<your-url>/health/` → `{"status":"ok","service":"silverfox"}`
-
-**Live URL (target):** `https://silverfox-production.up.railway.app`  
-**Portfolio:** [gilliomfrontlinedigital.com](https://gilliomfrontlinedigital.com) → SilverFox card → Live demo
-
-### Local automation center (full deploy pipeline)
-
-Run **both** frontend and backend of Deployment-Stripe-center:
-
-```powershell
-cd "c:\Software Projects\Deployment-Stripe-center"
-npm run dev:stop   # free ports 8000 + 5173
-npm run dev        # UI http://localhost:5173 → API :8000
-```
-
-Then import SilverFox, set `local_path`, and use **Transfer / deploy** — platform is **Railway**, not Render.
-
-**Note:** SilverFox Django local dev uses port **8001** while the automation center uses **8000**:
-
-```powershell
-cd backend
-python manage.py runserver 8001
-```
+→ **Step-by-step:** [docs/RAILWAY.md](docs/RAILWAY.md)  
+→ **Copy-paste template:** [railway.env.example](railway.env.example)
 
 ---
 

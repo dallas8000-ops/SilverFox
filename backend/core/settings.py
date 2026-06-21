@@ -7,15 +7,26 @@ import dj_database_url
 BASE_DIR = Path(__file__).resolve().parent.parent
 REPO_ROOT = BASE_DIR.parent
 
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'dev-only-change-in-production')
-DEBUG = os.environ.get('DEBUG', 'True').lower() in ('1', 'true', 'yes')
-ENABLE_ADMIN = os.environ.get('DJANGO_ENABLE_ADMIN', 'true').lower() in ('1', 'true', 'yes')
-
 IS_RAILWAY = bool(
     os.environ.get('RAILWAY_ENVIRONMENT')
     or os.environ.get('RAILWAY_PROJECT_ID')
     or os.environ.get('RAILWAY_PUBLIC_DOMAIN')
 )
+
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'dev-only-change-in-production')
+_debug_raw = os.environ.get('DEBUG', '')
+if _debug_raw:
+    DEBUG = _debug_raw.lower() in ('1', 'true', 'yes')
+else:
+    DEBUG = not IS_RAILWAY
+ENABLE_ADMIN = os.environ.get('DJANGO_ENABLE_ADMIN', 'true').lower() in ('1', 'true', 'yes')
+
+if IS_RAILWAY and not DEBUG and SECRET_KEY in ('', 'dev-only-change-in-production', 'change-me-in-production'):
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured(
+        'Set DJANGO_SECRET_KEY on the SilverFox Railway service (Variables → Raw Editor). '
+        'See docs/RAILWAY.md and railway.env.example in the repo root.'
+    )
 
 allowed_hosts_raw = os.environ.get('ALLOWED_HOSTS', '127.0.0.1,localhost')
 ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_raw.replace(',', ' ').split() if h.strip()]
