@@ -4,6 +4,8 @@ __pycache__/
 *.py[cod]
 .env
 backend/db.sqlite3
+silverfox-ecommerce/backend/db.sqlite
+*.sqlite
 backend/staticfiles/
 *.egg-info/
 .venv/

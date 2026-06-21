@@ -13,7 +13,7 @@
               <td>{{ item.product.name }}</td>
               <td>{{ item.size|default:"—" }}</td>
               <td>{{ item.quantity }}</td>
-              <td>€{{ item.product.price_usd }}</td>
+              <td>€{{ item.product.price_eur }}</td>
               <td>
                 <form method="post" action="{% url 'remove_cart_item' item.id %}">{% csrf_token %}
                   <button class="btn btn-sm btn-outline-danger">Remove</button>

@@ -21,19 +21,13 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
-      - name: Migrate and seed
+      - name: Django tests
         working-directory: backend
         env:
           DJANGO_SECRET_KEY: ci-test-secret
           DEBUG: 'True'
         run: |
           python manage.py migrate
-          python manage.py ensure_admin
-          python manage.py seed_mens_catalog
-
-      - name: Django tests
-        working-directory: backend
-        env:
-          DJANGO_SECRET_KEY: ci-test-secret
-          DEBUG: 'True'
-        run: python manage.py test
+          python manage.py seed_mens_catalog --force
+          python manage.py sync_catalog
+          python manage.py test

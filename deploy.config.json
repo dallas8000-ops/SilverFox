@@ -1,0 +1,15 @@
+{
+  "productionUrl": "https://silverfox-production.up.railway.app",
+  "platform": "railway",
+  "environments": {
+    "test": { "url": "" },
+    "staging": { "url": "" },
+    "production": { "url": "https://silverfox-production.up.railway.app" }
+  },
+  "postgres": {
+    "provider": "railway",
+    "connectionEnvVar": "DATABASE_URL",
+    "autoProvision": true
+  },
+  "healthPath": "/health/"
+}

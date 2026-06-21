@@ -2,6 +2,6 @@ services:
   - type: web
     name: silverfox
     env: python
-    buildCommand: pip install -r requirements.txt && cd backend && python manage.py collectstatic --noinput && python manage.py migrate && python manage.py ensure_admin && python manage.py seed_mens_catalog
+    buildCommand: pip install -r requirements.txt && cd backend && python manage.py collectstatic --noinput && python manage.py migrate && python manage.py ensure_admin && python manage.py seed_mens_catalog && python manage.py sync_catalog
     startCommand: cd backend && gunicorn core.wsgi:application --bind 0.0.0.0:$PORT
     healthcheckPath: /health/

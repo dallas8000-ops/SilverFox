@@ -62,10 +62,10 @@ PRODUCT_NAMES = {
         'Tan Shearling Collar Jacket', 'Midnight Wool Blend Overcoat',
     ],
     'Shoes': [
-        'Brown Leather Oxford', 'Black Cap-Toe Derby', 'Tan Suede Loafers', 'Chelsea Boot', 'Monk Strap Dress Shoe',
-        'Burgundy Wholecut Oxford', 'Black Patent Formal Shoe', 'Tan Brogue Derby', 'Navy Suede Chukka Boot',
-        'Chocolate Double Monk Strap', 'Grey Suede Penny Loafer', 'Black Chelsea Boot', 'Cognac Wingtip Brogue',
-        'White Leather Sneaker', 'Dark Brown Suede Loafer', 'Black Plain Toe Oxford',
+        'Brown Leather Oxford', 'Black Cap-Toe Derby', 'Tan Suede Loafers', 'Tan Chelsea Boot', 'Monk Strap Dress Shoe',
+        'Burgundy Wholecut Oxford', 'Black Patent Formal Shoe', 'Tan Brogue Derby', 'Brown Lace Dress Boot',
+        'Brown Stitched Casual Boot', 'Tan Buckle Ankle Boot', 'Black Chelsea Boot', 'Cognac Wingtip Brogue',
+        'Brown Outdoor Lace Boot', 'Burgundy Lace Boot', 'Black Plain Toe Oxford',
     ],
     'Accessories': [
         'Cognac Leather Belt', 'Burgundy Silk Tie', 'Atlas Chronograph Watch', 'Executive Bifold Wallet', 'Regent Gold Cufflinks',
@@ -86,9 +86,4 @@ DESCRIPTIONS = {
     'Accessories': "Refined finishing touches for the gentleman's wardrobe.",
 }
 
-IMAGE_POOL = [
-    'navy-mens-suit.png', 'white-dress-shirt.png', 'navy-chinos.png', 'navy-sweater.png',
-    'charcoal-overcoat.png', 'brown-oxford-shoes.png', 'cognac-leather-belt.png', 'burgundy-silk-tie.png',
-    'silver-chronograph-watch.png', 'sterling-cufflinks.png', 'black-leather-wallet.png', 'aviator-sunglasses.png',
-    'midnight-leather-belt.png',
-]
+IMAGE_POOL = []  # deprecated — use catalog_integrity.resolve_image()

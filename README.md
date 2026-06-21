@@ -109,7 +109,11 @@ Django server-side Checkout + webhooks — same pattern as Kistie payment stubs.
 cd backend
 python manage.py seed_mens_catalog        # skip if products exist
 python manage.py seed_mens_catalog --force  # replace all products
+python manage.py sync_catalog             # fix images + live FX rates (run after seed or nightly)
+python manage.py sync_catalog --ai        # optional OpenAI integrity audit
 ```
+
+**Catalog integrity:** Each product image is matched by keyword rules (e.g. sunglasses → aviator image, boots → shoe image). Prices in EUR/USD/UGX/KES are refreshed from live exchange rates. Staff can click **Sync catalog & FX rates** on `/staff/dashboard/`.
 
 ---
 

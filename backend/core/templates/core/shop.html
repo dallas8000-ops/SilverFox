@@ -4,19 +4,31 @@
 {% block content %}
 <div class="container py-4">
   <h1 class="sf-section-title mb-4">Shop</h1>
-  <p class="text-center text-muted mb-4">Premium men's fashion — {{ products|length }} items</p>
+  <p class="text-center text-muted mb-2">Premium men's fashion — {{ products|length }} items</p>
+  {% if fx_source %}
+    <p class="text-center small text-muted mb-4">Prices in {{ currency }} · rates via {{ fx_source }}</p>
+  {% endif %}
 
   <div class="d-flex flex-wrap gap-2 justify-content-center mb-3">
-    <a href="{% url 'shop' %}" class="sf-category-pill {% if active_category == 'All' %}active{% endif %}">All</a>
+    <a href="{% url 'shop' %}?currency={{ currency }}" class="sf-category-pill {% if active_category == 'All' %}active{% endif %}">All</a>
     {% for cat in categories %}
-      <a href="{% url 'shop' %}?category={{ cat.name|urlencode }}" class="sf-category-pill {% if active_category == cat.name %}active{% endif %}">{{ cat.name }}</a>
+      <a href="{% url 'shop' %}?category={{ cat.name|urlencode }}&currency={{ currency }}" class="sf-category-pill {% if active_category == cat.name %}active{% endif %}">{{ cat.name }}</a>
     {% endfor %}
   </div>
 
-  <form method="get" class="row g-2 justify-content-center mb-4">
+  <form method="get" class="row g-2 justify-content-center mb-4 align-items-end">
     {% if active_category != 'All' %}<input type="hidden" name="category" value="{{ active_category }}">{% endif %}
-    <div class="col-md-5">
+    <div class="col-md-4">
       <input type="search" name="q" class="form-control" placeholder="Search products..." value="{{ search_query }}" style="border-radius:0">
+    </div>
+    <div class="col-auto">
+      <label class="form-label small mb-0">Currency</label>
+      <select name="currency" class="form-select" style="border-radius:0" onchange="this.form.submit()">
+        <option value="EUR" {% if currency == 'EUR' %}selected{% endif %}>EUR €</option>
+        <option value="USD" {% if currency == 'USD' %}selected{% endif %}>USD $</option>
+        <option value="UGX" {% if currency == 'UGX' %}selected{% endif %}>UGX</option>
+        <option value="KES" {% if currency == 'KES' %}selected{% endif %}>KES</option>
+      </select>
     </div>
     <div class="col-auto">
       <button type="submit" class="btn sf-btn-gold">Search</button>
@@ -36,7 +48,13 @@
             <div class="small text-muted">{{ product.category.name }}</div>
             <h2 class="h6 fw-semibold">{{ product.name }}</h2>
             <p class="small text-muted mb-2">{{ product.description|truncatewords:12 }}</p>
-            <div class="fw-bold mb-2">€{{ product.price_usd }}</div>
+            <div class="fw-bold mb-2">
+              {% if currency == 'EUR' %}€{{ product.price_eur }}
+              {% elif currency == 'USD' %}${{ product.price_usd }}
+              {% elif currency == 'UGX' %}{{ product.price_ugx|floatformat:0 }} UGX
+              {% elif currency == 'KES' %}{{ product.price_kes|floatformat:0 }} KES
+              {% endif %}
+            </div>
             <form method="post" action="{% url 'add_to_cart' product.id %}">
               {% csrf_token %}
               <select name="size" class="form-select form-select-sm mb-2" style="border-radius:0">

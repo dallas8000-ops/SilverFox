@@ -43,21 +43,32 @@ def terms(request):
 
 
 def shop(request):
-    products = Product.objects.select_related('category').filter(in_stock=True)
+    from inventory.exchange_rates import fetch_rates
+
+    products = Product.objects.select_related('category').filter(in_stock=True, stock_quantity__gt=0)
     category_name = request.GET.get('category', '').strip()
     search = request.GET.get('q', '').strip()
+    currency = request.GET.get('currency', 'EUR').upper()
+    if currency not in ('EUR', 'USD', 'UGX', 'KES'):
+        currency = 'EUR'
+
     if category_name and category_name.lower() != 'all':
         products = products.filter(category__name=category_name)
     if search:
         products = products.filter(
             Q(name__icontains=search) | Q(description__icontains=search) | Q(category__name__icontains=search)
         )
+
+    fx = fetch_rates()
     categories = Category.objects.all()
     return render(request, 'core/shop.html', {
         'products': products,
         'categories': categories,
         'active_category': category_name or 'All',
         'search_query': search,
+        'currency': currency,
+        'fx_source': fx.get('source', ''),
+        'fx_rates': fx.get('rates', {}),
     })
 
 
@@ -79,7 +90,7 @@ def contact(request):
 def cart_view(request):
     cart = get_or_create_cart(request)
     items = cart.items.select_related('product', 'product__category')
-    total = sum((item.product.price_usd * item.quantity for item in items), Decimal('0'))
+    total = sum((item.product.price_eur * item.quantity for item in items), Decimal('0'))
     return render(request, 'core/cart.html', {'items': items, 'total': total, 'currency': 'EUR'})
 
 
@@ -116,7 +127,7 @@ def checkout(request):
         messages.warning(request, 'Your cart is empty.')
         return redirect('shop')
 
-    total = sum((item.product.price_usd * item.quantity for item in items), Decimal('0'))
+    total = sum((item.product.price_eur * item.quantity for item in items), Decimal('0'))
 
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()
@@ -145,13 +156,13 @@ def checkout(request):
                 total_amount=total,
             )
             for item in items:
-                line = item.product.price_usd * item.quantity
+                line = item.product.price_eur * item.quantity
                 OrderItem.objects.create(
                     order=order,
                     product_name=item.product.name,
                     quantity=item.quantity,
                     size=item.size,
-                    unit_price=item.product.price_usd,
+                    unit_price=item.product.price_eur,
                     line_total=line,
                 )
             cart.items.all().delete()
@@ -242,6 +253,14 @@ def staff_dashboard(request):
         'low_stock': Product.objects.filter(stock_quantity__lte=5).count(),
         'inquiries': ContactInquiry.objects.count(),
     }
+    if request.method == 'POST' and request.POST.get('action') == 'sync_catalog':
+        from django.core.management import call_command
+        from io import StringIO
+        out = StringIO()
+        call_command('sync_catalog', stdout=out)
+        messages.success(request, 'Catalog synced — images and exchange rates updated.')
+        return redirect('staff_dashboard')
+
     if request.method == 'POST' and 'order_id' in request.POST:
         order = get_object_or_404(Order, pk=request.POST['order_id'])
         new_status = request.POST.get('status')
