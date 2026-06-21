@@ -11,15 +11,23 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'dev-only-change-in-production'
 DEBUG = os.environ.get('DEBUG', 'True').lower() in ('1', 'true', 'yes')
 ENABLE_ADMIN = os.environ.get('DJANGO_ENABLE_ADMIN', 'true').lower() in ('1', 'true', 'yes')
 
-ALLOWED_HOSTS = [
-    h.strip()
-    for h in os.environ.get('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
-    if h.strip()
-]
-if os.environ.get('RAILWAY_PUBLIC_DOMAIN'):
-    ALLOWED_HOSTS.append(os.environ['RAILWAY_PUBLIC_DOMAIN'])
-if os.environ.get('RENDER_EXTERNAL_HOSTNAME'):
-    ALLOWED_HOSTS.append(os.environ['RENDER_EXTERNAL_HOSTNAME'])
+IS_RAILWAY = bool(
+    os.environ.get('RAILWAY_ENVIRONMENT')
+    or os.environ.get('RAILWAY_PROJECT_ID')
+    or os.environ.get('RAILWAY_PUBLIC_DOMAIN')
+)
+
+allowed_hosts_raw = os.environ.get('ALLOWED_HOSTS', '127.0.0.1,localhost')
+ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_raw.replace(',', ' ').split() if h.strip()]
+
+if IS_RAILWAY:
+    for railway_host in ('.railway.app', '.up.railway.app', 'healthcheck.railway.app'):
+        if railway_host not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(railway_host)
+
+railway_public_domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN', '').strip()
+if railway_public_domain and railway_public_domain not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(railway_public_domain)
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -102,11 +110,13 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.AllowAny'],
 }
 
-CSRF_TRUSTED_ORIGINS = [
-    o.strip()
-    for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
-    if o.strip()
-]
+CSRF_TRUSTED_ORIGINS = []
+if railway_public_domain:
+    CSRF_TRUSTED_ORIGINS.append(f'https://{railway_public_domain}')
+for origin in os.environ.get('CSRF_TRUSTED_ORIGINS', '').replace(',', ' ').split():
+    origin = origin.strip()
+    if origin and origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(origin)
 if DEBUG:
     CSRF_TRUSTED_ORIGINS += [
         'http://127.0.0.1:8000',
