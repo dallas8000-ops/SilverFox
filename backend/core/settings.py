@@ -140,7 +140,11 @@ if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SECURE_SSL_REDIRECT = os.environ.get('DJANGO_SSL_REDIRECT', 'true').lower() in ('1', 'true', 'yes')
+    # Railway health probes hit http:// internally without X-Forwarded-Proto — avoid 301 on /health/.
+    _ssl_default = 'false' if IS_RAILWAY else 'true'
+    SECURE_SSL_REDIRECT = os.environ.get('DJANGO_SSL_REDIRECT', _ssl_default).lower() in (
+        '1', 'true', 'yes',
+    )
 
 EMAIL_BACKEND = os.environ.get(
     'DJANGO_EMAIL_BACKEND',
